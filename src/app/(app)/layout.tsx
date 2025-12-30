@@ -22,9 +22,25 @@ export default async function AppLayout({
     .single()
 
   if (!profile?.onboarding_complete) {
-    // Prevent infinite loop if we are already on an onboarding page (if we had one inside (app))
-    // But Quiz is at /quiz (outside (app)), so this redirect is safe.
-    redirect('/quiz/welcome?mode=onboarding') 
+    // Fallback: if there is a completed quiz submission, mark onboarding complete
+    const { data: submission } = await supabase
+      .from('quiz_submissions')
+      .select('id,status,completed_at')
+      .eq('user_id', user.id)
+      .eq('status', 'completed')
+      .order('completed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (submission) {
+      await supabase
+        .from('users')
+        .update({ onboarding_complete: true })
+        .eq('id', user.id)
+      // continue to app without redirect
+    } else {
+      redirect('/quiz/welcome?mode=onboarding')
+    }
   }
 
   return (
