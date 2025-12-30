@@ -14,34 +14,9 @@ export default async function AppLayout({
     redirect('/login')
   }
 
-  // Check Onboarding Status
-  const { data: profile } = await supabase
-    .from('users')
-    .select('onboarding_complete')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile?.onboarding_complete) {
-    // Fallback: if there is a completed quiz submission, mark onboarding complete
-    const { data: submission } = await supabase
-      .from('quiz_submissions')
-      .select('id,status,completed_at')
-      .eq('user_id', user.id)
-      .eq('status', 'completed')
-      .order('completed_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (submission) {
-      await supabase
-        .from('users')
-        .update({ onboarding_complete: true })
-        .eq('id', user.id)
-      // continue to app without redirect
-    } else {
-      redirect('/quiz/welcome?mode=onboarding')
-    }
-  }
+  // FORCE REMOVE: Any automatic redirect to quiz is REMOVED to prevent loops.
+  // The app will assume that if the user is logged in, they can access the dashboard.
+  // The quiz is now strictly opt-in or handled by specific flows, never a global guard.
 
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
