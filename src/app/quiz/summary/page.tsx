@@ -51,61 +51,46 @@ export default function SummaryPage() {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user)
+      // Se usuário já logado, processa automaticamente
+      if (data.user) {
+        setProcessing(true)
+        // Usa o plano do estado se existir, senão default para basic
+        // Mas idealmente o usuário já tem um plano se está logado, 
+        // então aqui estamos apenas salvando os dados do quiz no perfil dele.
+        finalizeQuiz(state.selectedPlan || 'basic', state)
+          .then(() => {
+            // O redirecionamento acontece no server action, 
+            // mas caso falhe ou retorne, forçamos aqui
+            // window.location.href = '/dashboard' 
+          })
+          .catch(err => {
+            console.error(err)
+            setProcessing(false)
+          })
+      } else {
+        setLoading(false)
+      }
     })
-
-    const timer = setTimeout(() => {
-      setLoading(false)
-    }, 3000)
-    return () => clearTimeout(timer)
-  }, [setCurrentStep])
+  }, [setCurrentStep, state]) // Added state dependency
 
   const handleCheckout = async (plan: 'basic' | 'plus' | 'vip') => {
     if (processing) return
     setProcessing(true)
-
-    if (user) {
-      // User is logged in -> Finalize setup directly
-      try {
-        await finalizeQuiz(plan, state)
-        // finalizeQuiz redirects, so we don't need to do anything here
-      } catch (e) {
-        console.error(e)
-        setProcessing(false)
-        alert('Erro ao salvar dados. Tente novamente.')
-      }
-    } else {
-      // User is anonymous -> Go to register
-      router.push(`/register?plan=${plan}`)
-    }
+    // Lógica para usuário anônimo (Venda)
+    router.push(`/register?plan=${plan}`)
   }
 
-  // Lógica de dados
-  const name = state.name || 'Você'
-  const weight = state.weight || 70
-  
-  // Cálculo de meta (fallback se targetWeight não existir)
-  let targetWeight = state.targetWeight
-  if (!targetWeight) {
-    if (state.objective === 'lose_10') targetWeight = weight - 10
-    else if (state.objective === 'lose_11_20') targetWeight = weight - 15
-    else if (state.objective === 'lose_20_plus') targetWeight = weight - 20
-    else if (state.objective === 'maintain') targetWeight = weight
-    else targetWeight = weight - 5
-  }
-
-  const bodyPart = state.bodyParts[0] ? (BODY_PARTS_MAP[state.bodyParts[0]] || 'o corpo todo') : 'o corpo todo'
-  const time = state.workoutTime?.replace('_min', '').replace('_plus', '+') || '20'
-  const freq = state.workoutFrequency?.replace('x', '') || '3'
-  
-  const mainDream = state.dreams[0] ? (DREAMS_MAP[state.dreams[0]] || 'se sentir bem consigo mesma') : 'se sentir bem consigo mesma'
-  const mainBarrier = state.barriers[0] ? (BARRIERS_MAP[state.barriers[0]] || 'a falta de constância') : 'a falta de constância'
-
-  if (loading) {
+  // Se estiver processando (usuário logado sendo redirecionado), mostra loading
+  if (loading || (user && processing)) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] text-center px-6">
         <div className="w-16 h-16 border-4 border-gray-200 border-t-[#FF6B6B] rounded-full animate-spin mb-6"></div>
-        <h2 className="text-xl font-bold text-gray-800 mb-2">Calculando seu plano personalizado...</h2>
-        <p className="text-gray-500 animate-pulse">Cruzando seus dados com nossa metodologia...</p>
+        <h2 className="text-xl font-bold text-gray-800 mb-2">
+          {user ? 'Salvando seu perfil e gerando treino...' : 'Calculando seu plano personalizado...'}
+        </h2>
+        <p className="text-gray-500 animate-pulse">
+          {user ? 'Quase lá!' : 'Cruzando seus dados com nossa metodologia...'}
+        </p>
       </div>
     )
   }

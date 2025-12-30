@@ -7,6 +7,7 @@ import { QuizOption } from '@/components/quiz/QuizOption'
 import { QuizButton } from '@/components/quiz/QuizButton'
 
 const PERSONAL_CONDITIONS = [
+  { id: 'diabetes', label: 'Diabetes' },
   { id: 'hypertension', label: 'Pressão alta' },
   { id: 'cholesterol', label: 'Colesterol alto' },
   { id: 'insomnia', label: 'Insônia' },
