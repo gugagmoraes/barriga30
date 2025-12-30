@@ -108,7 +108,7 @@ export default async function DashboardPage() {
                         <div className="relative z-10">
                             <h2 className="text-lg font-semibold mb-2">Treino de Hoje</h2>
                             <p className="text-primary-foreground/90 mb-4 text-sm">Queime gordura abdominal em 30 minutos.</p>
-                            <Link href="/treinos">
+                            <Link href="/treinos/today">
                                 <Button variant="secondary" className="w-full sm:w-auto font-bold group-hover:scale-105 transition-transform">
                                     <Play className="h-4 w-4 mr-2" />
                                     Começar Treino
@@ -143,6 +143,9 @@ export default async function DashboardPage() {
                     </Link>
                     <Link href="/lista-compras" className="block p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition text-center hover:scale-105 active:scale-95 duration-200">
                         <span className="block font-medium text-primary">Lista de Compras</span>
+                    </Link>
+                    <Link href="/progresso" className="block p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition text-center hover:scale-105 active:scale-95 duration-200 col-span-2">
+                        <span className="block font-medium text-primary">Meu Progresso Completo</span>
                     </Link>
                  </div>
              </div>

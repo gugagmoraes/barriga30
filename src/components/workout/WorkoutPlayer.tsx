@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Play, Pause, SkipForward, RotateCcw, CheckCircle } from 'lucide-react'
+import { Play, Pause, SkipForward, RotateCcw, CheckCircle, ArrowDownCircle } from 'lucide-react'
 import { completeWorkout } from '@/app/actions/workout'
 import { useRouter } from 'next/navigation'
 import { WorkoutSuccessModal } from './WorkoutSuccessModal'
@@ -17,18 +17,18 @@ interface Workout {
     id: string
     name: string
     video_url?: string | null
-    exercises?: Exercise[] // If null, assume full video without structured exercises for MVP
+    exercises?: Exercise[] 
 }
 
-export default function WorkoutPlayer({ workout }: { workout: Workout }) {
+export default function WorkoutPlayer({ workout, regression }: { workout: Workout, regression?: Workout | null }) {
     const [isPlaying, setIsPlaying] = useState(false)
     const [isCompleted, setIsCompleted] = useState(false)
     const [showSuccessModal, setShowSuccessModal] = useState(false)
     const [earnedXP, setEarnedXP] = useState(0)
     const [newBadges, setNewBadges] = useState<string[]>([])
+    const router = useRouter()
     
     // Video Embed Logic
-    // If video_url is present, we show the embed. Otherwise placeholder.
     const videoId = workout.video_url ? workout.video_url.split('v=')[1] : null
     const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=${isPlaying ? 1 : 0}&rel=0` : null
 
@@ -56,6 +56,21 @@ export default function WorkoutPlayer({ workout }: { workout: Workout }) {
                     newBadges={newBadges} 
                     onClose={() => setShowSuccessModal(false)} 
                 />
+            )}
+
+            {/* Regression Option */}
+            {regression && (
+                <div className="absolute top-4 right-4 z-30">
+                     <Button 
+                        variant="secondary" 
+                        size="sm" 
+                        className="bg-white/90 hover:bg-white text-black text-xs font-semibold shadow-lg backdrop-blur-sm"
+                        onClick={() => router.push(`/treinos/${regression.id}`)}
+                     >
+                        <ArrowDownCircle className="w-4 h-4 mr-2 text-orange-500" />
+                        Está difícil? Fazer versão mais leve
+                     </Button>
+                </div>
             )}
 
             {/* Video Area */}

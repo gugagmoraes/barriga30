@@ -1,103 +1,122 @@
 import { createClient } from '@/lib/supabase/server'
+import { AddWeightDialog } from './add-weight-dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Camera, Scale, Calendar } from 'lucide-react'
+import { Calendar, TrendingDown, Activity } from 'lucide-react'
 
 export default async function ProgressPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return <div>Carregando...</div>
 
-  // Fetch weight records
+  // Fetch Data
   const { data: weightRecords } = await supabase
     .from('weight_records')
     .select('*')
-    .eq('user_id', user?.id)
+    .eq('user_id', user.id)
     .order('recorded_at', { ascending: false })
-    .limit(5)
 
-  // Fetch photos
-  const { data: photos } = await supabase
-    .from('progress_photos')
-    .select('*')
-    .eq('user_id', user?.id)
-    .order('taken_at', { ascending: false })
-    .limit(4)
+  const { data: workoutLogs } = await supabase
+    .from('workout_logs')
+    .select('*, workouts(name, level, type)')
+    .eq('user_id', user.id)
+    .order('completed_at', { ascending: false })
+
+  const currentWeight = weightRecords?.[0]?.weight || '-'
+  const startWeight = weightRecords?.[weightRecords.length - 1]?.weight || currentWeight
+  const diff = typeof currentWeight === 'number' && typeof startWeight === 'number' ? (currentWeight - startWeight).toFixed(1) : '0'
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Meu Progresso</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900">Meu Progresso</h1>
+        <AddWeightDialog />
+      </div>
 
-      {/* Weight Section */}
-      <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center">
-                  <Scale className="h-5 w-5 mr-2 text-primary" />
-                  Peso
-              </CardTitle>
-              <Button size="sm" variant="outline">Registrar Peso</Button>
-          </CardHeader>
-          <CardContent>
-              {weightRecords && weightRecords.length > 0 ? (
-                  <div className="space-y-2">
-                      {weightRecords.map((record) => (
-                          <div key={record.id} className="flex justify-between border-b pb-2 last:border-0">
-                              <span className="text-gray-600">{new Date(record.recorded_at).toLocaleDateString()}</span>
-                              <span className="font-bold">{record.weight} kg</span>
-                          </div>
-                      ))}
-                  </div>
-              ) : (
-                  <div className="text-center py-4 text-gray-500">
-                      Nenhum registro ainda.
-                  </div>
-              )}
-          </CardContent>
-      </Card>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Peso Atual</CardTitle>
+                <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">{currentWeight} kg</div>
+                <p className="text-xs text-muted-foreground">
+                    {Number(diff) <= 0 ? (
+                        <span className="text-green-500 flex items-center">
+                             {diff} kg desde o início
+                        </span>
+                    ) : (
+                        <span className="text-red-500">
+                            +{diff} kg desde o início
+                        </span>
+                    )}
+                </p>
+            </CardContent>
+        </Card>
+        
+        {/* Placeholder for future measurements */}
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Treinos Realizados</CardTitle>
+                <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">{workoutLogs?.length || 0}</div>
+            </CardContent>
+        </Card>
+      </div>
 
-      {/* Photos Section */}
-      <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center">
-                  <Camera className="h-5 w-5 mr-2 text-primary" />
-                  Fotos
-              </CardTitle>
-              <Button size="sm" variant="outline">Upload</Button>
-          </CardHeader>
-          <CardContent>
-              {photos && photos.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-2">
-                      {photos.map((photo) => (
-                          <div key={photo.id} className="aspect-square bg-gray-100 rounded overflow-hidden relative">
-                              {/* Use Next.js Image or simple img tag. For Supabase Storage signed URL, we usually need client side fetching or server signing. */}
-                              {/* For MVP, assuming public or handled url */}
-                              <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
-                                  Foto
-                              </div>
-                          </div>
-                      ))}
-                  </div>
-              ) : (
-                  <div className="text-center py-4 text-gray-500">
-                      Nenhuma foto ainda.
-                  </div>
-              )}
-          </CardContent>
-      </Card>
+      {/* History Lists */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Weight History */}
+        <div className="space-y-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+                <TrendingDown className="h-5 w-5" /> Histórico de Peso
+            </h2>
+            <div className="bg-white rounded-lg border divide-y">
+                {weightRecords?.length === 0 && (
+                    <div className="p-4 text-center text-gray-500 text-sm">Nenhum registro ainda.</div>
+                )}
+                {weightRecords?.map((record: any) => (
+                    <div key={record.id} className="p-4 flex justify-between items-center">
+                        <span className="font-medium">{record.weight} kg</span>
+                        <span className="text-sm text-gray-500">
+                            {new Date(record.recorded_at).toLocaleDateString('pt-BR')}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </div>
 
-      {/* Workout History */}
-      <Card>
-          <CardHeader>
-              <CardTitle className="flex items-center">
-                  <Calendar className="h-5 w-5 mr-2 text-primary" />
-                  Histórico de Treinos
-              </CardTitle>
-          </CardHeader>
-          <CardContent>
-               <div className="text-center py-4 text-gray-500">
-                   Calendário em breve.
-               </div>
-          </CardContent>
-      </Card>
+        {/* Workout History */}
+        <div className="space-y-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Calendar className="h-5 w-5" /> Histórico de Treinos
+            </h2>
+            <div className="bg-white rounded-lg border divide-y max-h-[400px] overflow-y-auto">
+                {workoutLogs?.length === 0 && (
+                    <div className="p-4 text-center text-gray-500 text-sm">Nenhum treino realizado ainda.</div>
+                )}
+                {workoutLogs?.map((log: any) => (
+                    <div key={log.id} className="p-4">
+                        <div className="flex justify-between">
+                            <span className="font-bold text-gray-800">{log.workouts?.name || 'Treino'}</span>
+                            <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">Concluído</span>
+                        </div>
+                        <div className="flex justify-between mt-1 text-sm text-gray-500">
+                            <span>
+                                {log.workouts?.type && `Treino ${log.workouts.type}`} • {log.workouts?.level}
+                            </span>
+                            <span>
+                                {new Date(log.completed_at).toLocaleDateString('pt-BR')}
+                            </span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+      </div>
     </div>
   )
 }
