@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CheckCircle2, Flame, Utensils, Trophy, Star, ShieldCheck } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { finalizeQuiz } from '@/app/actions/quiz'
 
 // Mapeamentos para texto legível
 const BODY_PARTS_MAP: Record<string, string> = {
@@ -39,18 +41,42 @@ export default function SummaryPage() {
   const { state, setCurrentStep } = useQuiz()
   const router = useRouter()
   const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<any>(null)
+  const [processing, setProcessing] = useState(false)
 
   useEffect(() => {
     setCurrentStep(11)
+    
+    // Check User Session
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user)
+    })
+
     const timer = setTimeout(() => {
       setLoading(false)
     }, 3000)
     return () => clearTimeout(timer)
   }, [setCurrentStep])
 
-  const handleCheckout = (plan: 'basic' | 'plus' | 'vip') => {
-    console.log('Checkout Plan:', plan)
-    alert(`Redirecionando para checkout do plano ${plan.toUpperCase()}...`)
+  const handleCheckout = async (plan: 'basic' | 'plus' | 'vip') => {
+    if (processing) return
+    setProcessing(true)
+
+    if (user) {
+      // User is logged in -> Finalize setup directly
+      try {
+        await finalizeQuiz(plan, state)
+        // finalizeQuiz redirects, so we don't need to do anything here
+      } catch (e) {
+        console.error(e)
+        setProcessing(false)
+        alert('Erro ao salvar dados. Tente novamente.')
+      }
+    } else {
+      // User is anonymous -> Go to register
+      router.push(`/register?plan=${plan}`)
+    }
   }
 
   // Lógica de dados
@@ -158,60 +184,74 @@ export default function SummaryPage() {
         </div>
 
         <p className="text-center font-bold text-gray-800 text-lg px-4">
-          Você escolhe abaixo como quer viver esse plano:
+          {user ? 'Finalize a configuração do seu plano:' : 'Você escolhe abaixo como quer viver esse plano:'}
         </p>
 
         {/* PLANOS DE VENDA */}
         <div className="space-y-6">
           
           {/* BASIC */}
-          <div className="border rounded-2xl p-6 space-y-4 relative bg-white shadow-sm">
+          <div className={`border rounded-2xl p-6 space-y-4 relative bg-white shadow-sm transition-all ${state.selectedPlan === 'basic' ? 'ring-4 ring-[#FF6B6B] scale-[1.02]' : ''}`}>
+            {state.selectedPlan === 'basic' && (
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#FF6B6B] text-white px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                Você escolheu este
+              </div>
+            )}
             <h3 className="font-bold text-lg text-gray-800">Plano Básico</h3>
-            <div className="text-3xl font-bold text-gray-900">R$ 29,90<span className="text-sm font-normal text-gray-500">/mês</span></div>
+            <div className="text-3xl font-bold text-gray-900">R$ 97,00<span className="text-sm font-normal text-gray-500">/ano</span></div>
+            <p className="text-xs text-gray-500 font-medium -mt-2">(12x R$ 9,90)</p>
             <ul className="text-sm space-y-2 text-gray-600">
-              <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-green-500"/> Treinos em casa</li>
-              <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-green-500"/> Cardápio Base</li>
-              <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-green-500"/> Acesso ao App</li>
+              <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-green-500"/> Treinos básicos</li>
+              <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-green-500"/> Gamificação</li>
+              <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-green-500"/> Dieta simples</li>
             </ul>
-            <button onClick={() => handleCheckout('basic')} className="w-full py-3 rounded-xl border-2 border-[#FF6B6B] text-[#FF6B6B] font-bold hover:bg-[#FF6B6B] hover:text-white transition-colors">
-              Escolher Básico
+            <button onClick={() => handleCheckout('basic')} disabled={processing} className="w-full py-3 rounded-xl border-2 border-[#FF6B6B] text-[#FF6B6B] font-bold hover:bg-[#FF6B6B] hover:text-white transition-colors">
+              {processing ? 'Processando...' : user ? 'Confirmar Plano Básico' : 'Começar com o Básico'}
             </button>
           </div>
 
           {/* PLUS (DESTAK) */}
-          <div className="border-2 border-[#2A9D8F] rounded-2xl p-6 space-y-4 relative bg-teal-50 shadow-xl scale-105 z-10">
+          <div className={`border-2 border-[#2A9D8F] rounded-2xl p-6 space-y-4 relative bg-teal-50 shadow-xl z-10 transition-all ${state.selectedPlan === 'plus' ? 'ring-4 ring-[#2A9D8F] scale-110' : 'scale-105'}`}>
             <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#2A9D8F] text-white px-6 py-1.5 rounded-full text-sm font-bold uppercase tracking-wide shadow-md">
-              Mais Escolhido
+              {state.selectedPlan === 'plus' ? 'Sua Escolha' : 'Mais Escolhido'}
             </div>
             <h3 className="font-bold text-xl text-[#2A9D8F]">Plano Plus</h3>
-            <div className="text-4xl font-bold text-gray-900">R$ 49,90<span className="text-sm font-normal text-gray-500">/mês</span></div>
-            <p className="text-xs text-gray-500 font-medium -mt-2">ou R$ 497 à vista (2 meses grátis)</p>
+            <div className="text-4xl font-bold text-gray-900">R$ 197,00<span className="text-sm font-normal text-gray-500">/ano</span></div>
+            <p className="text-xs text-gray-500 font-medium -mt-2">(12x R$ 19,90)</p>
             
             <div className="py-2">
               <p className="text-sm font-bold text-teal-800 mb-2">Tudo do Básico, mais:</p>
               <ul className="text-sm space-y-3 text-gray-700 font-medium">
-                <li className="flex gap-2 items-center"><CheckCircle2 className="w-5 h-5 text-[#2A9D8F]"/> <strong>Dieta 100% Personalizada</strong></li>
-                <li className="flex gap-2 items-center"><CheckCircle2 className="w-5 h-5 text-[#2A9D8F]"/> Chat com Nutri e Personal</li>
-                <li className="flex gap-2 items-center"><CheckCircle2 className="w-5 h-5 text-[#2A9D8F]"/> Acesso à Comunidade VIP</li>
+                <li className="flex gap-2 items-center"><CheckCircle2 className="w-5 h-5 text-[#2A9D8F]"/> <strong>Treinos intermediários</strong></li>
+                <li className="flex gap-2 items-center"><CheckCircle2 className="w-5 h-5 text-[#2A9D8F]"/> Dieta IA</li>
+                <li className="flex gap-2 items-center"><CheckCircle2 className="w-5 h-5 text-[#2A9D8F]"/> Checklist</li>
               </ul>
             </div>
             
-            <button onClick={() => handleCheckout('plus')} className="w-full py-4 rounded-xl bg-[#2A9D8F] text-white font-bold shadow-lg hover:bg-[#21867a] transition-transform active:scale-95 text-lg">
-              QUERO ESSE PLANO
+            <button onClick={() => handleCheckout('plus')} disabled={processing} className="w-full py-4 rounded-xl bg-[#2A9D8F] text-white font-bold shadow-lg hover:bg-[#21867a] transition-transform active:scale-95 text-lg">
+              {processing ? 'Processando...' : user ? 'Confirmar Plano Plus' : 'Quero o Plano Plus'}
             </button>
           </div>
 
           {/* VIP */}
-          <div className="border rounded-2xl p-6 space-y-4 relative bg-white shadow-sm">
-            <h3 className="font-bold text-lg text-purple-600">Plano Mentoria</h3>
-            <div className="text-3xl font-bold text-gray-900">R$ 97,00<span className="text-sm font-normal text-gray-500">/mês</span></div>
+          <div className={`border rounded-2xl p-6 space-y-4 relative bg-white shadow-sm transition-all ${state.selectedPlan === 'vip' ? 'ring-4 ring-purple-600 scale-[1.02]' : ''}`}>
+            {state.selectedPlan === 'vip' && (
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-purple-600 text-white px-4 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
+                Você escolheu este
+              </div>
+            )}
+            <h3 className="font-bold text-lg text-purple-600">Plano VIP</h3>
+            <div className="text-3xl font-bold text-gray-900">R$ 397,00<span className="text-sm font-normal text-gray-500">/ano</span></div>
+            <p className="text-xs text-gray-500 font-medium -mt-2">(12x R$ 39,90)</p>
             <ul className="text-sm space-y-2 text-gray-600">
               <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-purple-500"/> Tudo do Plus</li>
-              <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-purple-500"/> Call mensal individual</li>
-              <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-purple-500"/> Análise de exames</li>
+              <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-purple-500"/> Treinos avançados</li>
+              <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-purple-500"/> Biblioteca premium</li>
+              <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-purple-500"/> Status VIP</li>
+              <li className="flex gap-2"><CheckCircle2 className="w-4 h-4 text-purple-500"/> Desconto renovação</li>
             </ul>
-            <button onClick={() => handleCheckout('vip')} className="w-full py-3 rounded-xl border-2 border-purple-600 text-purple-600 font-bold hover:bg-purple-600 hover:text-white transition-colors">
-              Aplicar para Mentoria
+            <button onClick={() => handleCheckout('vip')} disabled={processing} className="w-full py-3 rounded-xl border-2 border-purple-600 text-purple-600 font-bold hover:bg-purple-600 hover:text-white transition-colors">
+              {processing ? 'Processando...' : user ? 'Aplicar para VIP' : 'Quero ser VIP'}
             </button>
           </div>
         </div>

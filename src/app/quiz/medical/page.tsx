@@ -3,20 +3,17 @@
 import { useQuiz } from '@/context/QuizContext'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { QuizOption } from '@/components/quiz/QuizOption'
+import { QuizButton } from '@/components/quiz/QuizButton'
 
 const PERSONAL_CONDITIONS = [
   { id: 'hypertension', label: 'Pressão alta' },
-  { id: 'diabetes', label: 'Pré-diabetes ou diabetes' },
   { id: 'cholesterol', label: 'Colesterol alto' },
-  { id: 'thyroid', label: 'Problemas de tireoide' },
-  { id: 'cancer', label: 'Câncer (qualquer tipo)' },
-  { id: 'depression', label: 'Depressão ou ansiedade' },
-  { id: 'hair_loss', label: 'Queda de cabelo intensa' },
-  { id: 'sleep', label: 'Problemas de sono (insônia, apneia)' },
-  { id: 'stress', label: 'Estresse crônico / burnout' },
-  { id: 'joints', label: 'Dor nas articulações / artrite' },
-  { id: 'hormonal', label: 'Problemas hormonais (PCOS, TPM forte)' },
-  { id: 'none', label: 'Nenhum / não sei' }
+  { id: 'insomnia', label: 'Insônia' },
+  { id: 'osteoarthritis', label: 'Osteoartrite' },
+  { id: 'depression', label: 'Depressão' },
+  { id: 'other', label: 'Outro' },
+  { id: 'none', label: 'Nenhum' }
 ]
 
 const FAMILY_CONDITIONS = [
@@ -101,29 +98,14 @@ export default function MedicalPage() {
           </p>
 
           <div className="flex flex-col gap-3">
-            {PERSONAL_CONDITIONS.map((opt) => {
-              const isSelected = personal.includes(opt.id)
-              return (
-                <button
-                  key={opt.id}
-                  onClick={() => handleSelect(opt.id, 'personal')}
-                  className={`
-                    w-full py-4 px-6 rounded-2xl text-lg font-medium transition-all duration-200 border-2
-                    flex items-center justify-between
-                    ${isSelected
-                      ? 'bg-[#2A9D8F] text-white border-[#2A9D8F] shadow-sm scale-[1.01]' 
-                      : 'bg-gray-50 text-gray-700 border-transparent hover:bg-gray-100'}
-                  `}
-                >
-                  <span>{opt.label}</span>
-                  {isSelected && (
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </button>
-              )
-            })}
+            {PERSONAL_CONDITIONS.map((opt) => (
+              <QuizOption
+                key={opt.id}
+                label={opt.label}
+                selected={personal.includes(opt.id)}
+                onClick={() => handleSelect(opt.id, 'personal')}
+              />
+            ))}
           </div>
 
           <div className={`transition-all duration-500 overflow-hidden ${showMicroText ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'}`}>
@@ -136,20 +118,13 @@ export default function MedicalPage() {
 
         <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-sm border-t border-gray-100">
           <div className="max-w-md mx-auto">
-            <button
+            <QuizButton
               onClick={handleNext}
               disabled={personal.length === 0}
-              className={`
-                w-full py-4 rounded-full text-white font-bold text-lg tracking-wide shadow-lg
-                transform transition-all duration-200 active:scale-95
-                ${personal.length > 0
-                  ? 'bg-[#FF9F89] hover:bg-[#FF8A6F] opacity-100 scale-100 text-white' 
-                  : 'bg-gray-300 cursor-not-allowed opacity-50 scale-100'}
-              `}
-              style={{ backgroundColor: personal.length > 0 ? '#FF9F89' : undefined }}
+              className={personal.length === 0 ? 'bg-[#E5E7EB] text-white' : ''}
             >
-              PRÓXIMO
-            </button>
+              Próximo
+            </QuizButton>
           </div>
         </div>
       </div>
@@ -169,48 +144,26 @@ export default function MedicalPage() {
           </p>
 
           <div className="flex flex-col gap-3">
-            {FAMILY_CONDITIONS.map((opt) => {
-              const isSelected = family.includes(opt.id)
-              return (
-                <button
-                  key={opt.id}
-                  onClick={() => handleSelect(opt.id, 'family')}
-                  className={`
-                    w-full py-4 px-6 rounded-2xl text-lg font-medium transition-all duration-200 border-2
-                    flex items-center justify-between
-                    ${isSelected
-                      ? 'bg-[#2A9D8F] text-white border-[#2A9D8F] shadow-sm scale-[1.01]' 
-                      : 'bg-gray-50 text-gray-700 border-transparent hover:bg-gray-100'}
-                  `}
-                >
-                  <span>{opt.label}</span>
-                  {isSelected && (
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </button>
-              )
-            })}
+            {FAMILY_CONDITIONS.map((opt) => (
+               <QuizOption
+                 key={opt.id}
+                 label={opt.label}
+                 selected={family.includes(opt.id)}
+                 onClick={() => handleSelect(opt.id, 'family')}
+               />
+            ))}
           </div>
         </div>
 
         <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-sm border-t border-gray-100">
           <div className="max-w-md mx-auto">
-            <button
+            <QuizButton
               onClick={handleNext}
               disabled={family.length === 0}
-              className={`
-                w-full py-4 rounded-full text-white font-bold text-lg tracking-wide shadow-lg
-                transform transition-all duration-200 active:scale-95
-                ${family.length > 0
-                  ? 'bg-[#FF9F89] hover:bg-[#FF8A6F] opacity-100 scale-100 text-white' 
-                  : 'bg-gray-300 cursor-not-allowed opacity-50 scale-100'}
-              `}
-              style={{ backgroundColor: family.length > 0 ? '#FF9F89' : undefined }}
+              className={family.length === 0 ? 'bg-[#E5E7EB] text-white' : ''}
             >
-              PRÓXIMO
-            </button>
+              Próximo
+            </QuizButton>
           </div>
         </div>
       </div>
@@ -237,12 +190,11 @@ export default function MedicalPage() {
 
         <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-sm border-t border-gray-100">
           <div className="max-w-md mx-auto">
-            <button
+            <QuizButton
               onClick={() => router.push('/quiz/routine')}
-              className="w-full py-4 rounded-full text-white font-bold text-lg tracking-wide shadow-lg bg-[#FF9F89] hover:bg-[#FF8A6F] transform transition-all duration-200 active:scale-95"
             >
               Entendi, vamos cuidar disso
-            </button>
+            </QuizButton>
           </div>
         </div>
       </div>

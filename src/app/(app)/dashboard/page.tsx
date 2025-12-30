@@ -27,14 +27,13 @@ export default async function DashboardPage() {
   // Fetch Badges (Needed for logic check)
   const { data: unlockedBadges } = await supabase.from('user_badges').select('badge_id, badges(key)').eq('user_id', user.id)
 
-  // DUOLINGO ONBOARDING CHECK
-  const hasFirstWorkoutBadge = unlockedBadges?.some((ub: any) => ub.badges?.key === 'first_workout')
-  const currentXP = stats?.total_xp || 0
-  const isActivated = hasFirstWorkoutBadge || currentXP >= 50 
-
-  if (!isActivated) {
-      redirect('/onboarding/start')
-  }
+  // DUOLINGO ONBOARDING CHECK REMOVED
+  // const hasFirstWorkoutBadge = unlockedBadges?.some((ub: any) => ub.badges?.key === 'first_workout')
+  // const currentXP = stats?.total_xp || 0
+  // const isActivated = hasFirstWorkoutBadge || currentXP >= 50 
+  // if (!isActivated) {
+  //     redirect('/onboarding/start')
+  // }
 
   // Fetch user profile & progression
   const { data: profile } = await supabase.from('users').select('*').eq('id', user.id).single()

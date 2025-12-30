@@ -115,9 +115,9 @@ export function WorkoutProgressionCard({ status, isCriticalMode, plan }: Progres
   }
 
   const workouts = [
-      { type: 'A', name: 'Treino A', icon: Dumbbell, color: 'text-blue-500', bg: 'bg-blue-100', current: progress.A },
-      { type: 'B', name: 'Treino B', icon: Zap, color: 'text-yellow-500', bg: 'bg-yellow-100', current: progress.B },
-      { type: 'C', name: 'Treino C', icon: Activity, color: 'text-green-500', bg: 'bg-green-100', current: progress.C },
+      { type: 'A', name: 'Treino A', icon: Dumbbell, color: 'text-blue-500', bg: 'bg-blue-100', current: progress.A, id: '1' },
+      { type: 'B', name: 'Treino B', icon: Zap, color: 'text-yellow-500', bg: 'bg-yellow-100', current: progress.B, id: '2' },
+      { type: 'C', name: 'Treino C', icon: Activity, color: 'text-green-500', bg: 'bg-green-100', current: progress.C, id: '3' },
   ]
 
   return (
@@ -167,7 +167,7 @@ export function WorkoutProgressionCard({ status, isCriticalMode, plan }: Progres
 
                     {/* Start Button (only if not complete, or if Plus/VIP allows replay) */}
                     <div className="flex justify-end">
-                        <Link href={`/treinos?level=${currentLevel}&type=${w.type}`} className="w-full">
+                        <Link href={`/treinos/${w.id}`} className="w-full">
                             <Button 
                                 variant={isComplete ? "outline" : "secondary"} 
                                 size="sm" 

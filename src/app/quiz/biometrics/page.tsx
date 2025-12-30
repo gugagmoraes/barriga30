@@ -3,6 +3,7 @@
 import { useQuiz } from '@/context/QuizContext'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { QuizButton } from '@/components/quiz/QuizButton'
 
 export default function BiometricsPage() {
   const { state, updateState, setCurrentStep } = useQuiz()
@@ -65,7 +66,7 @@ export default function BiometricsPage() {
               onChange={(e) => setName(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Seu nome"
-              className="w-full p-4 bg-[#F3F4F6] rounded-xl text-lg font-medium text-gray-900 placeholder-gray-400 border-2 border-transparent focus:border-[#2A9D8F] focus:bg-white transition-all outline-none"
+              className="w-full p-4 bg-[#F9F8F5] rounded-xl text-lg font-medium text-gray-900 placeholder-gray-400 border border-[#E5E0D8] focus:border-[#1E6B7B] focus:bg-white transition-all outline-none"
             />
           </div>
 
@@ -79,7 +80,7 @@ export default function BiometricsPage() {
                 onChange={(e) => /^\d*\.?\d{0,1}$/.test(e.target.value) && setWeight(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="00.0"
-                className="w-full p-4 bg-[#F3F4F6] rounded-xl text-lg font-medium text-gray-900 placeholder-gray-400 border-2 border-transparent focus:border-[#2A9D8F] focus:bg-white transition-all outline-none text-center"
+                className="w-full p-4 bg-[#F9F8F5] rounded-xl text-lg font-medium text-gray-900 placeholder-gray-400 border border-[#E5E0D8] focus:border-[#1E6B7B] focus:bg-white transition-all outline-none text-center"
               />
             </div>
             <div className="space-y-2">
@@ -91,7 +92,7 @@ export default function BiometricsPage() {
                 onKeyDown={handleKeyDown}
                 placeholder="000"
                 maxLength={3}
-                className="w-full p-4 bg-[#F3F4F6] rounded-xl text-lg font-medium text-gray-900 placeholder-gray-400 border-2 border-transparent focus:border-[#2A9D8F] focus:bg-white transition-all outline-none text-center"
+                className="w-full p-4 bg-[#F9F8F5] rounded-xl text-lg font-medium text-gray-900 placeholder-gray-400 border border-[#E5E0D8] focus:border-[#1E6B7B] focus:bg-white transition-all outline-none text-center"
               />
             </div>
           </div>
@@ -106,7 +107,7 @@ export default function BiometricsPage() {
               onKeyDown={handleKeyDown}
               placeholder="00"
               maxLength={3}
-              className="w-full p-4 bg-[#F3F4F6] rounded-xl text-lg font-medium text-gray-900 placeholder-gray-400 border-2 border-transparent focus:border-[#2A9D8F] focus:bg-white transition-all outline-none text-center"
+              className="w-full p-4 bg-[#F9F8F5] rounded-xl text-lg font-medium text-gray-900 placeholder-gray-400 border border-[#E5E0D8] focus:border-[#1E6B7B] focus:bg-white transition-all outline-none text-center"
             />
           </div>
 
@@ -119,10 +120,10 @@ export default function BiometricsPage() {
                   key={opt}
                   onClick={() => setGender(opt)}
                   className={`
-                    py-4 rounded-xl font-bold text-sm transition-all duration-200 border-2
+                    py-4 rounded-xl font-bold text-sm transition-all duration-200 border
                     ${gender === opt 
-                      ? 'bg-[#1F4E5F] text-white border-[#1F4E5F] shadow-md transform scale-[1.02]' 
-                      : 'bg-[#F3F4F6] text-gray-600 border-transparent hover:bg-gray-200'}
+                      ? 'bg-[#1E6B7B] text-white border-[#1E6B7B] shadow-md transform scale-[1.02]' 
+                      : 'bg-[#F9F8F5] text-gray-600 border-[#E5E0D8] hover:bg-[#F0EFEB]'}
                   `}
                 >
                   {opt}
@@ -135,20 +136,12 @@ export default function BiometricsPage() {
 
       <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-sm border-t border-gray-100">
         <div className="max-w-md mx-auto">
-          <button
+          <QuizButton
             onClick={handleNext}
             disabled={!isValid()}
-            className={`
-              w-full py-4 rounded-full text-white font-bold text-lg tracking-wide shadow-lg
-              transform transition-all duration-200 active:scale-95
-              ${isValid()
-                ? 'bg-[#FF9F89] hover:bg-[#FF8A6F] opacity-100 scale-100 text-white' // Coral lighter
-                : 'bg-gray-300 cursor-not-allowed opacity-50 scale-100'}
-            `}
-            style={{ backgroundColor: isValid() ? '#FF9F89' : undefined }} // Matching the user image roughly
           >
             Próximo
-          </button>
+          </QuizButton>
         </div>
       </div>
     </div>

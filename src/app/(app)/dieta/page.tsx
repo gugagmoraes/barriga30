@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Utensils, Coffee, Sun, Moon, Wand2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { GenerateDietButton } from './generate-button'
+import { RegenerateDietButton } from './regenerate-button'
 
 // Helper to get icon based on meal name (simple heuristic)
 const getMealIcon = (name: string) => {
@@ -18,6 +19,10 @@ export default async function DietPage() {
   
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return <div>Faça login para ver sua dieta.</div>
+
+  // Fetch User Plan
+  const { data: userData } = await supabase.from('users').select('plan_type, weight, height, age').eq('id', user.id).single()
+  const planType = userData?.plan_type || 'basic'
 
   // 1. Fetch Active Diet Snapshot
   const { data: snapshot } = await supabase
@@ -49,13 +54,25 @@ export default async function DietPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h1 className="text-2xl font-bold text-gray-900">Minha Dieta</h1>
             <p className="text-gray-500">{snapshot.name}</p>
-            <p className="text-sm text-gray-400 mt-1">Meta diária: {snapshot.daily_calories} kcal</p>
+            <div className="flex items-center gap-2 mt-1">
+                <span className="text-sm text-gray-400">Meta diária: {snapshot.daily_calories} kcal</span>
+                <span className="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-500 capitalize">{planType} Plan</span>
+            </div>
         </div>
-        {/* Future: Add "Regenerate" button here for Plus/VIP users */}
+        
+        {/* Regenerate Button for Plus/VIP */}
+        {planType !== 'basic' && (
+            <RegenerateDietButton 
+                userId={user.id} 
+                currentWeight={userData?.weight || 70}
+                currentHeight={userData?.height || 165}
+                currentAge={userData?.age || 30}
+            />
+        )}
       </div>
 
       <div className="grid gap-4">

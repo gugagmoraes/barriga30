@@ -3,6 +3,8 @@
 import { useQuiz } from '@/context/QuizContext'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { QuizOption } from '@/components/quiz/QuizOption'
+import { QuizButton } from '@/components/quiz/QuizButton'
 
 const OPTIONS = [
   { id: 'lose_10', label: 'Perder até 10 kg' },
@@ -25,14 +27,18 @@ export default function ObjectivePage() {
   const handleSelect = (id: string) => {
     setSelectedId(id)
     updateState({ objective: id })
-    setShowMicroText(true)
+    // Avança automaticamente para a próxima página
+    router.push('/quiz/biometrics')
   }
 
+  // Removemos o botão de "Próximo" pois agora é automático
+  /* 
   const handleNext = () => {
     if (selectedId) {
       router.push('/quiz/biometrics')
     }
   }
+  */
 
   const getMicroText = () => {
     if (!selectedId) return null
@@ -56,47 +62,38 @@ export default function ObjectivePage() {
 
         <div className="flex flex-col gap-3">
           {OPTIONS.map((option) => (
-            <button
+            <QuizOption
               key={option.id}
+              label={option.label}
+              selected={selectedId === option.id}
               onClick={() => handleSelect(option.id)}
-              className={`
-                w-full py-4 px-6 rounded-2xl text-lg font-medium transition-all duration-200 border-2
-                flex items-center text-left
-                ${selectedId === option.id 
-                  ? 'bg-[#2A9D8F] text-white border-[#2A9D8F] shadow-sm scale-[1.01]' 
-                  : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50 shadow-sm'}
-              `}
-            >
-              {option.label}
-            </button>
+            />
           ))}
         </div>
 
-        {/* Micro-text area */}
+        {/* Micro-text area removed since we auto-advance */}
+        {/*
         <div className={`transition-all duration-500 overflow-hidden ${showMicroText ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'}`}>
           <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-blue-800 text-sm font-medium text-center">
             {getMicroText()}
           </div>
         </div>
+        */}
       </div>
 
+      {/* Footer removed since we auto-advance */}
+      {/*
       <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-sm border-t border-gray-100">
         <div className="max-w-md mx-auto">
-          <button
+          <QuizButton
             onClick={handleNext}
             disabled={!selectedId}
-            className={`
-              w-full py-4 rounded-full text-white font-bold text-lg tracking-wide shadow-lg
-              transform transition-all duration-200 active:scale-95
-              ${selectedId
-                ? 'bg-[#FF6B6B] hover:bg-[#ff5252] opacity-100 scale-100' 
-                : 'bg-gray-300 cursor-not-allowed opacity-50 scale-100'}
-            `}
           >
             PRÓXIMO
-          </button>
+          </QuizButton>
         </div>
       </div>
+      */}
     </div>
   )
 }

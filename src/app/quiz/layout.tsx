@@ -34,10 +34,10 @@ function QuizHeader() {
               <div 
                 key={i} 
                 className={`
-                  h-1 rounded-full transition-all duration-300
-                  ${isActive ? 'w-6 bg-[#FF6B6B]' : 'w-1.5'}
-                  ${isCompleted ? 'bg-[#FF6B6B] opacity-50' : ''}
-                  ${!isActive && !isCompleted ? 'bg-gray-200' : ''}
+                  h-1.5 rounded-full transition-all duration-300
+                  ${isActive ? 'w-8 bg-[#1E6B7B]' : 'w-1.5'}
+                  ${isCompleted ? 'bg-[#1E6B7B] opacity-50' : ''}
+                  ${!isActive && !isCompleted ? 'bg-[#E5E0D8]' : ''}
                 `}
               ></div>
             )

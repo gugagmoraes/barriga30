@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { signup } from '../actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,11 +12,32 @@ function RegisterForm() {
   const [state, formAction, isPending] = useActionState(signup, null)
   const searchParams = useSearchParams()
   const plan = searchParams.get('plan')
+  
+  const [initialName, setInitialName] = useState('')
+  const [quizData, setQuizData] = useState('')
+
+  useEffect(() => {
+    // Tentar recuperar dados do Quiz
+    const saved = localStorage.getItem('barriga30_quiz_official')
+    if (saved) {
+      setQuizData(saved)
+      try {
+        const parsed = JSON.parse(saved)
+        if (parsed.name) {
+          setInitialName(parsed.name)
+        }
+      } catch (e) {
+        console.error(e)
+      }
+    }
+  }, [])
 
   return (
     <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
       <form action={formAction} className="space-y-6">
         <input type="hidden" name="plan" value={plan || ''} />
+        {/* Pass quiz data to the server action */}
+        <input type="hidden" name="quiz_data" value={quizData} />
         
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-gray-700">
@@ -30,6 +51,8 @@ function RegisterForm() {
               autoComplete="name"
               required
               placeholder="Maria Silva"
+              defaultValue={initialName}
+              key={initialName} // Forçar re-render quando o nome carregar
             />
           </div>
         </div>

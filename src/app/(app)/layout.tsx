@@ -14,6 +14,19 @@ export default async function AppLayout({
     redirect('/login')
   }
 
+  // Check Onboarding Status
+  const { data: profile } = await supabase
+    .from('users')
+    .select('onboarding_complete')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile?.onboarding_complete) {
+    // Prevent infinite loop if we are already on an onboarding page (if we had one inside (app))
+    // But Quiz is at /quiz (outside (app)), so this redirect is safe.
+    redirect('/quiz/welcome?mode=onboarding') 
+  }
+
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
       <Navbar />

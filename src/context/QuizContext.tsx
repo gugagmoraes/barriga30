@@ -43,6 +43,9 @@ export type QuizState = {
   
   // BLOCO 10
   barriers: string[]
+  
+  // EXTRA: Plano pré-selecionado
+  selectedPlan: 'basic' | 'plus' | 'vip' | null
 }
 
 type QuizContextType = {
@@ -75,7 +78,8 @@ const INITIAL_STATE: QuizState = {
   prepStyle: null,
   dreams: [],
   mainChange: null,
-  barriers: []
+  barriers: [],
+  selectedPlan: null
 }
 
 export function QuizProvider({ children }: { children: ReactNode }) {
