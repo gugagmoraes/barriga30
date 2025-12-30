@@ -95,6 +95,16 @@ export default function SummaryPage() {
     )
   }
 
+  const answers = state.answers || {}
+  const name = answers.name || 'você'
+  const weight = answers.weight
+  const targetWeight = answers.targetWeight
+  const bodyPart = BODY_PARTS_MAP[answers.bodyPart as string] || answers.bodyPart
+  const time = answers.time
+  const freq = answers.frequency
+  const mainDream = DREAMS_MAP[answers.dream as string] || answers.dream
+  const mainBarrier = BARRIERS_MAP[answers.barrier as string] || answers.barrier
+
   return (
     <div className="flex-1 flex flex-col pb-24 animate-in fade-in duration-700">
       {/* Header Personalizado */}
