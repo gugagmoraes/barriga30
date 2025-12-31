@@ -141,7 +141,9 @@ export function DietTracker({ snapshot, dailyTracking, date }: DietTrackerProps)
                               </div>
                               <p className="text-sm text-gray-500 mb-2">{meal.time_of_day?.slice(0, 5)}</p>
                               <ul className="text-sm space-y-1">
-                                  {meal.snapshot_items.map((item: any) => (
+                                  {meal.snapshot_items
+                                    .sort((a: any, b: any) => getItemOrder(a.name) - getItemOrder(b.name))
+                                    .map((item: any) => (
                                       <li key={item.id} className="text-gray-700 flex justify-between">
                                           <span>{item.quantity} {item.name}</span>
                                           {/* Optional: Show per item macros if detailed view is enabled, keeping simple for now */}

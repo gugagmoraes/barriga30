@@ -35,6 +35,20 @@ function calculatePortion(targetCals: number, food: FoodItem, forceMaxUnits?: nu
   if (['lettuce', 'spinach', 'arugula', 'kale'].includes(food.id)) {
     return { name: food.label, qty: 'À vontade', cal: 15, rawQty: 1, unit: 'unidade', category: food.category, protein: 1, carbs: 2, fat: 0 }
   }
+  // Special rule for Tomato: always in grams, max 80g
+  if (food.id === 'tomato') {
+    let grams = 80 // Max per rule
+    // Adjust if target cals is very low, but usually tomato is low cal. 80g tomato ~15kcal.
+    // Allow calc but cap at 80g.
+    const calculatedGrams = Math.round((targetCals / food.calories) * 100 / 10) * 10
+    grams = Math.min(grams, calculatedGrams)
+    if (grams < 20) grams = 20 // Min 20g
+    const protein = Number(((grams / 100) * food.protein).toFixed(1))
+    const carbs = Number(((grams / 100) * food.carbs).toFixed(1))
+    const fat = Number(((grams / 100) * food.fat).toFixed(1))
+    return { name: food.label, qty: `${grams}g`, cal: Math.round((grams / 100) * food.calories), rawQty: grams, unit: 'g', category: food.category, protein, carbs, fat }
+  }
+
   if (food.unit === 'unidade' || food.unit === 'fatia' || food.unit === 'colher') {
     let units = Math.max(1, Math.round((targetCals / food.calories)))
     if (forceMaxUnits) units = Math.min(units, forceMaxUnits)
@@ -103,6 +117,13 @@ async function isDietValid(snapshot: any, foodPrefs: any) {
     if (meal.name.includes('Café')) {
       const hasProtein = items.some((i: any) => i.category === 'protein')
       if (!hasProtein) return false
+      // Breakfast Rule: No heavy meat (beef, pork, fish). Only eggs/chicken/cheese.
+      const heavyMeat = items.some((i: any) => {
+         const n = (i.name || '').toLowerCase()
+         return n.includes('carne') || n.includes('peixe') || n.includes('porco')
+      })
+      if (heavyMeat) return false
+
       const carbItems = items.filter((i: any) => i.category === 'carb')
       if (carbItems.length < 1) return false
       const allowed = carbItems.every((i: any) => hasBread(i.name) || hasSweetPotato(i.name))
@@ -223,7 +244,10 @@ export async function generateDietForUser(userId: string): Promise<any> {
       const proteinChoices = (foodPrefs.proteins || []).filter((id: string) => ['chicken','meat','fish','pork'].includes(id))
       const pFood = getRandomFood(proteinChoices.length ? proteinChoices : foodPrefs.proteins, 'chicken')
       const pItem = calculatePortion(pCals, pFood)
-      itemsToInsert.push(pItem)
+      // Order: Rice -> Beans -> Meat -> Veggies -> Tomato
+      // We will collect items first then push in order
+      const orderedItems: any[] = []
+      
       lunchProteinFoodRef = pFood
       lunchProteinCal = pItem.cal
       const carbBudget = mealCals - pItem.cal
@@ -232,27 +256,36 @@ export async function generateDietForUser(userId: string): Promise<any> {
       if (foodPrefs.carbs?.includes('rice_white') || foodPrefs.carbs?.includes('rice_brown')) carbFood = getRandomFood(foodPrefs.carbs, 'rice_white', ['rice_white','rice_brown'])
       let riceCals = carbBudget
       let beansCals = 0
+      let bItem: any = null
       if (foodPrefs.carbs?.includes('beans')) {
         riceCals = Math.round(carbBudget * 0.6)
         beansCals = carbBudget - riceCals
-        const bItem = calculatePortion(beansCals, getFoodById('beans')!)
-        itemsToInsert.push(bItem)
+        bItem = calculatePortion(beansCals, getFoodById('beans')!)
         lunchBeansUsed = true
         lunchBeansCal = bItem.cal
       }
       const cItem = calculatePortion(riceCals, carbFood)
-      itemsToInsert.push(cItem)
+      orderedItems.push(cItem) // 1. Rice
+      if (bItem) orderedItems.push(bItem) // 2. Beans
+      
+      orderedItems.push(pItem) // 3. Meat
+      
       lunchCarbFoodRef = carbFood
       lunchCarbCal = cItem.cal
       if (!foodPrefs.no_veggies) {
         const vegFood = getFoodById('lettuce')!
-        itemsToInsert.push(calculatePortion(15, vegFood))
-        if (foodPrefs.veggies?.includes('tomato')) itemsToInsert.push(calculatePortion(20, getFoodById('tomato')!, 1))
+        orderedItems.push(calculatePortion(15, vegFood)) // 4. Salad
+        if (foodPrefs.veggies?.includes('tomato')) orderedItems.push(calculatePortion(20, getFoodById('tomato')!, 1)) // 5. Tomato
       }
+      itemsToInsert.push(...orderedItems)
     } else if (m.name.includes('Lanche')) {
       const pCals = Math.round(mealCals * 0.5)
       const cCals = mealCals - pCals
-      const pFood = getRandomFood(foodPrefs.proteins, 'eggs')
+      // Snack protein: prioritize eggs
+      let snackProteins = (foodPrefs.proteins || [])
+      if (snackProteins.includes('eggs')) snackProteins = ['eggs']
+      const pFood = getRandomFood(snackProteins, 'eggs')
+      
       itemsToInsert.push(calculatePortion(pCals, pFood, 4))
       let fruitItem: any = null
       let carbBudget = cCals
