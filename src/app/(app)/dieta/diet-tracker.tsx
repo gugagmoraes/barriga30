@@ -27,6 +27,17 @@ export function DietTracker({ snapshot, dailyTracking, date }: DietTrackerProps)
   const mealsCompleted = dailyTracking?.meals_completed || 0
   const totalMeals = snapshot.snapshot_meals.length
 
+  const getItemOrder = (name: string) => {
+    const n = name.toLowerCase()
+    if (n.includes('arroz')) return 1
+    if (n.includes('feij')) return 2
+    if (n.includes('carne') || n.includes('frango') || n.includes('peixe') || n.includes('lombo') || n.includes('suíno')) return 3
+    if (n.includes('ovo')) return 4
+    if (n.includes('alface') || n.includes('brócolis') || n.includes('espinafre') || n.includes('abobrinha') || n.includes('cenoura')) return 5
+    if (n.includes('tomate')) return 6
+    return 7
+  }
+
   // Optimistic UI could be added here, but sticking to simple server actions for reliability first
 
   return (
