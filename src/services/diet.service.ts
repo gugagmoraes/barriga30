@@ -36,8 +36,30 @@ function calculatePortion(targetCals: number, food: FoodItem): { name: string, q
     let carbs = 0
     let fat = 0
     
+    // Alface à vontade
+    if (food.id === 'lettuce') {
+        return {
+            name: food.label,
+            qty: 'À vontade',
+            cal: 15,
+            rawQty: 1,
+            unit: 'unidade',
+            category: food.category,
+            protein: 1,
+            carbs: 2,
+            fat: 0
+        }
+    }
+
     if (food.unit === 'unidade' || food.unit === 'fatia' || food.unit === 'colher') {
-        units = Math.max(0.5, Math.round((targetCals / food.calories) * 2) / 2) // Round to nearest 0.5
+        // Round to nearest integer for units, minimum 1
+        units = Math.max(1, Math.round((targetCals / food.calories))) 
+        
+        // Limit fruits/bread/eggs to reasonable max per meal if not main source
+        if (food.category === 'fruit' && units > 2) units = 2
+        if (food.id === 'bread' && units > 2) units = 2
+        if (food.id === 'eggs' && units > 4) units = 4
+
         protein = units * food.protein
         carbs = units * food.carbs
         fat = units * food.fat
@@ -54,8 +76,10 @@ function calculatePortion(targetCals: number, food: FoodItem): { name: string, q
             fat: Number(fat.toFixed(1))
         }
     } else {
-        // Grams
-        const grams = Math.round((targetCals / food.calories) * 100)
+        // Grams - Round to nearest 10g
+        let grams = Math.round((targetCals / food.calories) * 100 / 10) * 10
+        if (grams < 50 && food.category !== 'fat') grams = 50 // Minimum portion
+
         protein = (grams / 100) * food.protein
         carbs = (grams / 100) * food.carbs
         fat = (grams / 100) * food.fat

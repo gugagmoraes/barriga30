@@ -55,15 +55,27 @@ export async function uploadProgressPhoto(formData: FormData) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'Unauthorized' }
 
-    const photo = formData.get('photo') as File
-    if (!photo) return { success: false, error: 'No photo provided' }
+    let dataUrl = ''
+
+    // Check if we received base64 string directly (from client-side processing)
+    const photoBase64 = formData.get('photo_base64') as string
+    if (photoBase64) {
+        dataUrl = photoBase64
+    } else {
+        // Fallback to File object processing (might hit size limits on server actions)
+        const photo = formData.get('photo') as File
+        if (!photo) return { success: false, error: 'No photo provided' }
+        
+        try {
+            const buffer = await photo.arrayBuffer()
+            const base64 = Buffer.from(buffer).toString('base64')
+            dataUrl = `data:${photo.type};base64,${base64}`
+        } catch (e) {
+            return { success: false, error: 'Failed to process file on server' }
+        }
+    }
 
     try {
-        // Convert to base64 for MVP storage
-        const buffer = await photo.arrayBuffer()
-        const base64 = Buffer.from(buffer).toString('base64')
-        const dataUrl = `data:${photo.type};base64,${base64}`
-
         const { error } = await supabase.from('progress_photos').insert({
             user_id: user.id,
             photo_data: dataUrl,

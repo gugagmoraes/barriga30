@@ -73,14 +73,7 @@ export function AddMeasurementsDialog() {
                     <Label htmlFor="bust">Busto (cm)</Label>
                     <Input id="bust" name="bust" type="number" step="0.1" />
                 </div>
-                <div className="space-y-2">
-                    <Label htmlFor="thigh">Coxa (cm)</Label>
-                    <Input id="thigh" name="thigh" type="number" step="0.1" />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="arm">Braço (cm)</Label>
-                    <Input id="arm" name="arm" type="number" step="0.1" />
-                </div>
+                {/* Simplified: Removed Thigh/Arm for MVP as per request to simplify */}
             </div>
             <Button type="submit" disabled={loading}>
                 {loading ? 'Salvando...' : 'Salvar Medidas'}

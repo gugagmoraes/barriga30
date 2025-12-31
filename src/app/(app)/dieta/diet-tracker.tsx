@@ -70,11 +70,24 @@ export function DietTracker({ snapshot, dailyTracking, date }: DietTrackerProps)
             </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-            <Progress value={waterProgress} className="h-4" />
+            <Progress 
+                value={waterProgress} 
+                className="h-4" 
+                indicatorClassName="bg-green-500" // Use CSS variable or class if supported by component, otherwise inline style or class override
+            />
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold">{currentBottles}</span>
-                    <span className="text-gray-500">/ {targetBottles} garrafas</span>
+                    <div className="flex gap-1">
+                        {Array.from({ length: targetBottles }).map((_, i) => (
+                            <Droplets 
+                                key={i} 
+                                className={`h-6 w-6 ${i < currentBottles ? 'text-green-500 fill-green-500' : 'text-orange-300'}`} 
+                            />
+                        ))}
+                    </div>
+                    <span className="text-sm text-gray-500 ml-2">
+                        {currentBottles}/{targetBottles} garrafas
+                    </span>
                 </div>
                 <div className="flex gap-2">
                     <Button 
@@ -88,7 +101,7 @@ export function DietTracker({ snapshot, dailyTracking, date }: DietTrackerProps)
                     <Button 
                         variant="default" 
                         size="icon"
-                        className="bg-blue-500 hover:bg-blue-600"
+                        className="bg-green-500 hover:bg-green-600"
                         onClick={() => updateWaterIntake(date, bottleSize)}
                     >
                         <Plus className="h-4 w-4" />

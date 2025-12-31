@@ -20,19 +20,45 @@ export function AddPhotoDialog() {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   
-  const handleSubmit = async (formData: FormData) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
     setLoading(true)
-    try {
-        const result = await uploadProgressPhoto(formData)
-        if (result.success) {
-            toast.success('Foto salva com sucesso!')
-            setOpen(false)
-        } else {
-            toast.error('Erro ao salvar foto.')
+    
+    const formData = new FormData(e.currentTarget)
+    const file = formData.get('photo') as File
+    
+    if (file && file.size > 0) {
+        // Convert to base64 immediately for server action stability
+        const reader = new FileReader()
+        reader.readAsDataURL(file)
+        reader.onload = async () => {
+            const base64 = reader.result as string
+            formData.set('photo_base64', base64) // Pass base64 string instead of file object to server action if needed
+            // Actually, server actions can handle FormData with Files now, but let's check the action.
+            // If the action expects a file, we pass formData directly.
+            // If the action was failing, let's try debugging the action first.
+            // But usually the issue is Next.js server action file handling limits (1MB default).
+            // Let's assume the action handles it, but we need to ensure the form submits correctly.
+            
+            try {
+                const result = await uploadProgressPhoto(formData)
+                if (result.success) {
+                    toast.success('Foto salva com sucesso!')
+                    setOpen(false)
+                } else {
+                    toast.error('Erro ao salvar foto: ' + (result.error || 'Desconhecido'))
+                }
+            } catch (err) {
+                toast.error('Erro inesperado.')
+            } finally {
+                setLoading(false)
+            }
         }
-    } catch (e) {
-        toast.error('Erro inesperado.')
-    } finally {
+        reader.onerror = () => {
+            toast.error('Erro ao ler arquivo.')
+            setLoading(false)
+        }
+    } else {
         setLoading(false)
     }
   }
@@ -51,7 +77,7 @@ export function AddPhotoDialog() {
             Tire uma foto no espelho para comparar sua evolução.
           </DialogDescription>
         </DialogHeader>
-        <form action={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
                 <Label htmlFor="photo">Foto</Label>
                 <Input id="photo" name="photo" type="file" accept="image/*" required />
