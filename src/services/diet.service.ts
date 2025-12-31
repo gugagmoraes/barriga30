@@ -119,7 +119,10 @@ async function isDietValid(snapshot: any, foodPrefs: any) {
       if (rice && beans) {
         const rg = parseGrams(rice.quantity)
         const bg = parseGrams(beans.quantity)
-        if (bg > rg) return false
+        // GLOBAL RULE: Beans must be <= Rice * 0.6
+        // This is strictly enforced for cultural consistency
+        if (bg > (rg * 0.6)) return false
+        if (bg >= rg) return false
       }
     }
     if (meal.name.includes('Café')) {
@@ -302,9 +305,32 @@ export async function generateDietForUser(userId: string): Promise<any> {
           let beansCals = 0
           let bItem: any = null
           if (foodPrefs.carbs?.includes('beans')) {
-            riceCals = Math.round(carbBudget * 0.6)
-            beansCals = carbBudget - riceCals
-            bItem = calculatePortion(beansCals, getFoodById('beans')!)
+            // GLOBAL RULE IMPLEMENTATION:
+            // Calculate Rice grams first, then set Beans grams = 50% of Rice grams
+            // This ensures strict adherence to the visual proportion rule.
+            // Formula: Budget = (G_rice * K_rice) + (G_beans * K_beans)
+            //         G_beans = 0.5 * G_rice
+            //         Budget = G_rice * (K_rice + 0.5 * K_beans)
+            //         G_rice = Budget / (K_rice + 0.5 * K_beans)
+
+            const targetBeanRatio = 0.5 // 50% of rice weight
+            const kRice = carbFood.calories / 100
+            const beanFood = getFoodById('beans')!
+            const kBeans = beanFood.calories / 100
+
+            const gRice = Math.round(carbBudget / (kRice + (targetBeanRatio * kBeans)))
+            const gBeans = Math.round(gRice * targetBeanRatio)
+
+            riceCals = Math.round(gRice * kRice)
+            beansCals = Math.round(gBeans * kBeans)
+            
+            // Recalculate portions explicitly with grams to ensure precision
+            // We use a custom call to calculatePortion that respects the exact gram target if possible,
+            // but since calculatePortion logic is based on calories, we pass the derived calories.
+            // The existing calculatePortion will convert back to grams ~ closely.
+            // To be safe, we rely on the calorie math above being consistent with the food DB.
+
+            bItem = calculatePortion(beansCals, beanFood)
             lunchBeansUsed = true
             lunchBeansCal = bItem.cal
           }
@@ -346,14 +372,27 @@ export async function generateDietForUser(userId: string): Promise<any> {
           const pFood = lunchProteinFoodRef || getRandomFood(foodPrefs.proteins, 'meat')
           const pCals = Math.round(lunchProteinCal * 0.9)
           itemsToInsert.push(calculatePortion(pCals, pFood))
+          
+          const carbFood = lunchCarbFoodRef || getFoodById('rice_white')!
+          let riceCals = Math.round(lunchCarbCal * 0.8)
+          
           if (lunchBeansUsed) {
             const bFood = getFoodById('beans')!
+            // Apply same logic for Dinner: maintain ratio if both exist
+            // Dinner is roughly 80% of Lunch size for these items
+            
+            // Re-calculate based on the reduced rice calories to maintain ratio
+            // If lunch followed the ratio, reducing both by 0.8 keeps the ratio.
+            // Rice Cal * 0.8 -> Rice Grams * 0.8
+            // Bean Cal * 0.8 -> Bean Grams * 0.8
+            // Ratio holds.
+            
             const bCals = Math.round(lunchBeansCal * 0.8)
             itemsToInsert.push(calculatePortion(bCals, bFood))
           }
-          const carbFood = lunchCarbFoodRef || getFoodById('rice_white')!
-          const cCals = Math.round(lunchCarbCal * 0.8)
-          itemsToInsert.push(calculatePortion(cCals, carbFood))
+          
+          itemsToInsert.push(calculatePortion(riceCals, carbFood))
+          
           if (!foodPrefs.no_veggies) {
             const vegFood = getFoodById('broccoli')!
             itemsToInsert.push(calculatePortion(30, vegFood))
