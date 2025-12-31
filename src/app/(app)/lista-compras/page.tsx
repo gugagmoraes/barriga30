@@ -36,25 +36,65 @@ export default async function ShoppingListPage() {
     )
   }
 
-  // Aggregate Items
-  const items: string[] = []
-  
+  // Aggregate Items Logic
+  const aggregatedItems: Record<string, { total: number, unit: string }> = {}
+
   snapshot.snapshot_meals.forEach((meal: any) => {
       meal.snapshot_items.forEach((item: any) => {
-          items.push(`${item.name} (${item.quantity})`)
+          const name = item.name
+          const qtyStr = item.quantity
+          
+          let val = 0
+          let unit = ''
+
+          // Parse quantity
+          const match = qtyStr.match(/^([\d\.]+)\s*(.+)$/)
+          if (match) {
+              val = parseFloat(match[1])
+              unit = match[2] // e.g., "g", "unidade(s)", "fatia(s)"
+          } else {
+             // Fallback for "À vontade" or weird strings
+             val = 1
+             unit = 'unidade' // placeholder
+          }
+          
+          // Normalize unit key
+          const key = `${name}::${unit}`
+          
+          if (!aggregatedItems[key]) {
+              aggregatedItems[key] = { total: 0, unit }
+          }
+          aggregatedItems[key].total += val
       })
   })
 
-  // Unique items (simple string deduplication for MVP)
-  const uniqueItems = Array.from(new Set(items)).sort()
+  const finalItems = Object.entries(aggregatedItems).map(([key, data]) => {
+      const [name] = key.split('::')
+      const weeklyTotal = Math.ceil(data.total * 7)
+      
+      let displayQty = ''
+      if (data.unit.includes('g')) {
+          if (weeklyTotal >= 1000) {
+              displayQty = `${(weeklyTotal / 1000).toFixed(1)}kg`
+          } else {
+              displayQty = `${weeklyTotal}g`
+          }
+      } else {
+          displayQty = `${weeklyTotal} ${data.unit}`
+      }
+      
+      return `${name} - ${displayQty}`
+  }).sort()
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Lista de Compras</h1>
-        <Button variant="outline" size="sm">
-            Exportar PDF
-        </Button>
+        <Link href="/dieta/pdf" target="_blank">
+            <Button variant="outline" size="sm">
+                Exportar PDF
+            </Button>
+        </Link>
       </div>
 
       <Card>
@@ -64,7 +104,7 @@ export default async function ShoppingListPage() {
         </CardHeader>
         <CardContent>
             <div className="space-y-4">
-                {uniqueItems.map((item, index) => (
+                {finalItems.map((item, index) => (
                     <ShoppingListItem key={index} item={item} />
                 ))}
             </div>

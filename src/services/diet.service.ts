@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { Database, PlanType } from '@/types/database.types'
 import { addMonths, startOfMonth } from 'date-fns'
+import { FOOD_DB, getFoodById, FoodItem } from '@/lib/food-db'
 
 const ACTIVITY_MULTIPLIERS: Record<string, number> = {
   'sedentary': 1.2,
@@ -8,22 +9,6 @@ const ACTIVITY_MULTIPLIERS: Record<string, number> = {
   'moderate': 1.55,
   'active': 1.725,
   'very_active': 1.9
-}
-
-const FOOD_LABELS: Record<string, string> = {
-    chicken: 'Frango Grelhado',
-    meat: 'Carne Magra Moída',
-    eggs: 'Ovos Cozidos/Mexidos',
-    fish: 'Peixe Assado/Grelhado',
-    rice: 'Arroz Branco/Integral',
-    beans: 'Feijão',
-    potato: 'Batata Cozida/Assada',
-    pasta: 'Macarrão Integral',
-    bread: 'Pão Francês',
-    lettuce: 'Alface',
-    tomato: 'Tomate',
-    carrot: 'Cenoura Ralada',
-    broccoli: 'Brócolis Cozido'
 }
 
 // Mifflin-St Jeor Equation
@@ -39,35 +24,54 @@ function calculateTDEE(tmb: number, activityLevel: string): number {
   return Math.round(tmb * multiplier)
 }
 
-function getPreferredFood(category: 'proteins' | 'carbs' | 'veggies', preferences: any, defaultName: string) {
-    const list = preferences?.[category]
-    if (list && Array.isArray(list) && list.length > 0) {
-        // Pick random
-        const key = list[Math.floor(Math.random() * list.length)]
-        return FOOD_LABELS[key] || defaultName
-    }
-    return defaultName
+function getRandomFood(categoryList: string[], fallbackId: string): FoodItem {
+    if (!categoryList || categoryList.length === 0) return getFoodById(fallbackId)!
+    const id = categoryList[Math.floor(Math.random() * categoryList.length)]
+    return getFoodById(id) || getFoodById(fallbackId)!
 }
 
-function getPortion(calories: number, category: 'protein' | 'carb' | 'fat' | 'veg', preferences: any): { name: string, quantity: string, cal: number } {
-  const scale = calories / 2000; 
-  
-  if (category === 'protein') {
-    const name = getPreferredFood('proteins', preferences, 'Frango Grelhado')
-    return { name, quantity: `${Math.round(150 * scale)}g`, cal: Math.round(165 * scale) }
-  }
-  if (category === 'carb') {
-    const name = getPreferredFood('carbs', preferences, 'Arroz Integral')
-    return { name, quantity: `${Math.round(100 * scale)}g`, cal: Math.round(130 * scale) }
-  }
-  if (category === 'fat') {
-    return { name: 'Azeite de Oliva ou Castanhas', quantity: '1 colher', cal: 120 }
-  }
-  if (category === 'veg') {
-    const name = getPreferredFood('veggies', preferences, 'Legumes Variados')
-    return { name, quantity: 'À vontade', cal: 50 }
-  }
-  return { name: 'Alimento', quantity: '1 porção', cal: 100 }
+function calculatePortion(targetCals: number, food: FoodItem): { name: string, qty: string, cal: number, rawQty: number, unit: string, category: string, protein: number, carbs: number, fat: number } {
+    let units = 0
+    let protein = 0
+    let carbs = 0
+    let fat = 0
+    
+    if (food.unit === 'unidade' || food.unit === 'fatia' || food.unit === 'colher') {
+        units = Math.max(0.5, Math.round((targetCals / food.calories) * 2) / 2) // Round to nearest 0.5
+        protein = units * food.protein
+        carbs = units * food.carbs
+        fat = units * food.fat
+        
+        return {
+            name: food.label,
+            qty: `${units} ${food.unit}(s)`,
+            cal: Math.round(units * food.calories),
+            rawQty: units,
+            unit: food.unit,
+            category: food.category,
+            protein: Number(protein.toFixed(1)),
+            carbs: Number(carbs.toFixed(1)),
+            fat: Number(fat.toFixed(1))
+        }
+    } else {
+        // Grams
+        const grams = Math.round((targetCals / food.calories) * 100)
+        protein = (grams / 100) * food.protein
+        carbs = (grams / 100) * food.carbs
+        fat = (grams / 100) * food.fat
+
+        return {
+            name: food.label,
+            qty: `${grams}g`,
+            cal: Math.round((grams / 100) * food.calories),
+            rawQty: grams,
+            unit: 'g',
+            category: food.category,
+            protein: Number(protein.toFixed(1)),
+            carbs: Number(carbs.toFixed(1)),
+            fat: Number(fat.toFixed(1))
+        }
+    }
 }
 
 export async function checkDietRegenerationLimit(userId: string, planType: PlanType) {
@@ -131,7 +135,7 @@ export async function generateDietForUser(userId: string) {
   const gender = prefs?.gender || user.gender || 'female'
   const activity = 'moderate' 
   
-  const foodPreferences = prefs?.food_preferences || {}
+  const foodPrefs = prefs?.food_preferences || {}
   const bottleSize = prefs?.water_bottle_size_ml || 500
 
   const tmb = calculateTMB(weight, height, age, gender)
@@ -163,7 +167,9 @@ export async function generateDietForUser(userId: string) {
         fat: Math.round(targetCalories * 0.3 / 9),
         water_target_ml: waterTargetMl,
         water_bottle_size: bottleSize,
-        bottles_count: bottlesCount
+        bottles_count: bottlesCount,
+        tmb: tmb,
+        tdee: tdee
       }
     })
     .select()
@@ -171,15 +177,18 @@ export async function generateDietForUser(userId: string) {
 
   if (snapError) throw snapError
 
-  // 6. Generate Meals (Structure)
-  const meals = [
-    { name: 'Café da Manhã', order: 1, time: '08:00' },
-    { name: 'Almoço', order: 2, time: '12:00' },
-    { name: 'Lanche da Tarde', order: 3, time: '16:00' },
-    { name: 'Jantar', order: 4, time: '20:00' }
+  // 6. Generate Meals (Strict Logic)
+  // Distribution: Breakfast 25%, Lunch 35%, Snack 15%, Dinner 25%
+  const mealsConfig = [
+    { name: 'Café da Manhã', order: 1, time: '08:00', ratio: 0.25 },
+    { name: 'Almoço', order: 2, time: '12:00', ratio: 0.35 },
+    { name: 'Lanche da Tarde', order: 3, time: '16:00', ratio: 0.15 },
+    { name: 'Jantar', order: 4, time: '20:00', ratio: 0.25 }
   ]
 
-  for (const m of meals) {
+  for (const m of mealsConfig) {
+    const mealCals = Math.round(targetCalories * m.ratio)
+    
     const { data: mealData } = await supabase
       .from('snapshot_meals')
       .insert({
@@ -192,42 +201,125 @@ export async function generateDietForUser(userId: string) {
       .single()
 
     if (mealData) {
-      // Add Items based on Meal Type
-      const items = []
-      
+      const itemsToInsert = []
+
+      // --- BREAKFAST ---
       if (m.name.includes('Café')) {
-        const pName = getPreferredFood('proteins', foodPreferences, 'Ovos')
-        const cName = getPreferredFood('carbs', foodPreferences, 'Fruta')
-        items.push({ name: pName, qty: '2 unidades/fatias', cal: 140, cat: 'protein' })
-        items.push({ name: cName, qty: '1 porção média', cal: 60, cat: 'carb' })
-        items.push({ name: 'Café/Chá sem açúcar', qty: '1 xícara', cal: 5, cat: 'other' })
-      } else if (m.name.includes('Lanche')) {
-         items.push({ name: 'Iogurte Natural ou Whey', qty: '1 porção', cal: 100, cat: 'protein' })
-         items.push({ name: 'Castanhas ou Pasta de Amendoim', qty: '1 porção pequena', cal: 80, cat: 'fat' })
-      } else {
-         // Lunch/Dinner logic (Scaled)
-         const p = getPortion(targetCalories, 'protein', foodPreferences)
-         const c = getPortion(targetCalories, 'carb', foodPreferences)
-         const v = getPortion(targetCalories, 'veg', foodPreferences)
-         
-         items.push({ name: p.name, qty: p.quantity, cal: p.cal, cat: 'protein' })
-         if (m.name.includes('Almoço')) {
-            items.push({ name: c.name, qty: c.quantity, cal: c.cal, cat: 'carb' })
-         } else {
-            // Dinner: lighter carb (just veg + protein usually, but adding small carb if needed)
-            items.push({ name: 'Salada de Folhas Verdes', qty: 'À vontade', cal: 20, cat: 'veg' })
+        // 50% Carb, 30% Protein, 20% Fruit/Fat
+        const carbCals = mealCals * 0.5
+        const proteinCals = mealCals * 0.3
+        const fruitCals = mealCals * 0.2
+
+        // Carb: Prioritize Bread/Tapioca if selected, else any carb
+        const breakfastCarbs = foodPrefs.carbs?.filter((id: string) => ['bread', 'sliced_bread', 'tapioca', 'cuscuz'].includes(id))
+        const carbFood = getRandomFood(breakfastCarbs?.length ? breakfastCarbs : foodPrefs.carbs, 'bread')
+        
+        // Protein: Eggs or Cheese (Cheese not in DB yet, so Eggs/Chicken fallback)
+        const proteinFood = getRandomFood(foodPrefs.proteins, 'eggs')
+
+        itemsToInsert.push(calculatePortion(carbCals, carbFood))
+        itemsToInsert.push(calculatePortion(proteinCals, proteinFood))
+
+        if (!foodPrefs.no_fruits) {
+            const fruitFood = getRandomFood(foodPrefs.fruits, 'banana')
+            itemsToInsert.push(calculatePortion(fruitCals, fruitFood))
+        } else {
+             // Redistribute fruit cals to carb
+             itemsToInsert[0] = calculatePortion(carbCals + fruitCals, carbFood)
+        }
+      }
+
+      // --- LUNCH ---
+      else if (m.name.includes('Almoço')) {
+        // 25% Protein, 25% Carb, 15% Beans (if selected), 15% Fat, 20% Veg
+        const proteinCals = mealCals * 0.30
+        const carbCals = mealCals * 0.25
+        const beansCals = mealCals * 0.15
+        const vegCals = mealCals * 0.10 // Veggies are low cal, this gives good volume
+        const fatCals = mealCals * 0.20 // Cooking oil/etc
+
+        const proteinFood = getRandomFood(foodPrefs.proteins, 'chicken')
+        itemsToInsert.push(calculatePortion(proteinCals, proteinFood))
+
+        // Beans Logic
+        if (foodPrefs.carbs?.includes('beans')) {
+            const beansFood = getFoodById('beans')!
+            itemsToInsert.push(calculatePortion(beansCals, beansFood))
+            
+            // Rice/Other Carb
+            const otherCarbs = foodPrefs.carbs.filter((c: string) => c !== 'beans')
+            const carbFood = getRandomFood(otherCarbs, 'rice_white')
+            itemsToInsert.push(calculatePortion(carbCals, carbFood))
+        } else {
+            // No beans, more carb
+            const carbFood = getRandomFood(foodPrefs.carbs, 'rice_white')
+            itemsToInsert.push(calculatePortion(carbCals + beansCals, carbFood))
+        }
+
+        // Veggies
+        if (!foodPrefs.no_veggies) {
+            const vegFood = getRandomFood(foodPrefs.veggies, 'lettuce')
+            itemsToInsert.push(calculatePortion(vegCals, vegFood))
+        }
+
+        // Fat
+        const fatFood = getFoodById('olive_oil')!
+        itemsToInsert.push(calculatePortion(fatCals, fatFood))
+      }
+
+      // --- SNACK ---
+      else if (m.name.includes('Lanche')) {
+        // 50% Protein/Fat, 50% Fruit/Carb
+        const pCals = mealCals * 0.5
+        const fCals = mealCals * 0.5
+        
+        const proteinFood = getRandomFood(foodPrefs.proteins, 'eggs') // Or yogurt if we had it
+        itemsToInsert.push(calculatePortion(pCals, proteinFood))
+
+        if (!foodPrefs.no_fruits) {
+            const fruitFood = getRandomFood(foodPrefs.fruits, 'apple')
+            itemsToInsert.push(calculatePortion(fCals, fruitFood))
+        } else {
+            const carbFood = getRandomFood(foodPrefs.carbs, 'bread')
+            itemsToInsert.push(calculatePortion(fCals, carbFood))
+        }
+      }
+
+      // --- DINNER ---
+      else if (m.name.includes('Jantar')) {
+         // Similar to Lunch but maybe less heavy carb if we wanted, but for MVP keep simple ratios
+         // 35% Protein, 35% Carb, 20% Veg, 10% Fat
+         const proteinCals = mealCals * 0.35
+         const carbCals = mealCals * 0.35
+         const vegCals = mealCals * 0.20
+         const fatCals = mealCals * 0.10
+
+         const proteinFood = getRandomFood(foodPrefs.proteins, 'meat')
+         itemsToInsert.push(calculatePortion(proteinCals, proteinFood))
+
+         const carbFood = getRandomFood(foodPrefs.carbs, 'potato')
+         itemsToInsert.push(calculatePortion(carbCals, carbFood))
+
+         if (!foodPrefs.no_veggies) {
+             const vegFood = getRandomFood(foodPrefs.veggies, 'broccoli')
+             itemsToInsert.push(calculatePortion(vegCals, vegFood))
          }
-         items.push({ name: v.name, qty: v.quantity, cal: v.cal, cat: 'veg' })
+         
+         const fatFood = getFoodById('olive_oil')!
+         itemsToInsert.push(calculatePortion(fatCals, fatFood))
       }
 
       // Insert Items
-      for (const item of items) {
+      for (const item of itemsToInsert) {
         await supabase.from('snapshot_items').insert({
           snapshot_meal_id: mealData.id,
           name: item.name,
           quantity: item.qty,
           calories: item.cal,
-          category: item.cat
+          category: item.category,
+          protein: item.protein,
+          carbs: item.carbs,
+          fat: item.fat
         })
       }
     }

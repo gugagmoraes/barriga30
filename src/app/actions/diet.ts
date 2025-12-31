@@ -20,6 +20,9 @@ export async function saveDietPreferences(formData: FormData) {
         const selectedProteins = JSON.parse(formData.get('selected_proteins') as string || '[]')
         const selectedCarbs = JSON.parse(formData.get('selected_carbs') as string || '[]')
         const selectedVeggies = JSON.parse(formData.get('selected_veggies') as string || '[]')
+        const selectedFruits = JSON.parse(formData.get('selected_fruits') as string || '[]')
+        const noVeggies = formData.get('no_veggies') === 'true'
+        const noFruits = formData.get('no_fruits') === 'true'
 
         const preferences = {
             user_id: user.id,
@@ -32,7 +35,10 @@ export async function saveDietPreferences(formData: FormData) {
             food_preferences: {
                 proteins: selectedProteins,
                 carbs: selectedCarbs,
-                veggies: selectedVeggies
+                veggies: selectedVeggies,
+                fruits: selectedFruits,
+                no_veggies: noVeggies,
+                no_fruits: noFruits
             },
             water_bottle_size_ml: Number(formData.get('water_bottle_size_ml'))
         }

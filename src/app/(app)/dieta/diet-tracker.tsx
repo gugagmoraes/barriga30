@@ -114,12 +114,23 @@ export function DietTracker({ snapshot, dailyTracking, date }: DietTrackerProps)
                             disabled={index > mealsCompleted || (index < mealsCompleted - 1)} 
                           />
                           <div className="flex-1">
-                              <h3 className={`font-bold ${isChecked ? 'text-green-800 line-through' : ''}`}>{meal.name}</h3>
-                              <p className="text-sm text-gray-500 mb-2">{meal.time_of_day}</p>
+                              <div className="flex justify-between items-start">
+                                <h3 className={`font-bold ${isChecked ? 'text-green-800 line-through' : ''}`}>{meal.name}</h3>
+                                <div className="text-right text-xs text-gray-500 bg-gray-50 p-1 rounded">
+                                    <div className="font-semibold">{meal.snapshot_items.reduce((acc: number, i: any) => acc + (i.calories || 0), 0)} kcal</div>
+                                    <div className="flex gap-2">
+                                        <span className="text-blue-600">P: {meal.snapshot_items.reduce((acc: number, i: any) => acc + (i.protein || 0), 0).toFixed(0)}g</span>
+                                        <span className="text-orange-600">C: {meal.snapshot_items.reduce((acc: number, i: any) => acc + (i.carbs || 0), 0).toFixed(0)}g</span>
+                                        <span className="text-yellow-600">G: {meal.snapshot_items.reduce((acc: number, i: any) => acc + (i.fat || 0), 0).toFixed(0)}g</span>
+                                    </div>
+                                </div>
+                              </div>
+                              <p className="text-sm text-gray-500 mb-2">{meal.time_of_day?.slice(0, 5)}</p>
                               <ul className="text-sm space-y-1">
                                   {meal.snapshot_items.map((item: any) => (
-                                      <li key={item.id} className="text-gray-700">
-                                          {item.quantity} {item.name}
+                                      <li key={item.id} className="text-gray-700 flex justify-between">
+                                          <span>{item.quantity} {item.name}</span>
+                                          {/* Optional: Show per item macros if detailed view is enabled, keeping simple for now */}
                                       </li>
                                   ))}
                               </ul>
