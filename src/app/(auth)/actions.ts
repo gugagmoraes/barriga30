@@ -75,18 +75,29 @@ export async function signup(prevState: any, formData: FormData) {
   })
 
   if (error) {
+    console.error('Signup Error (Supabase Auth):', error)
     return { error: error.message }
   }
 
   // Ensure public.users has the plan_type (Critical for Diet Generation limits)
   if (authData.user) {
-    // We attempt to update. If the trigger hasn't run yet, this might fail or be weird,
-    // but typically Supabase triggers are fast. 
-    // If no trigger exists, we might need to INSERT. 
-    // Safe bet: Upsert or Update. Let's assume the user row exists or will be created.
-    // Actually, to be safe, let's wait for the trigger or do an upsert if we had all data.
-    // For now, simple update.
-    await supabase.from('users').update({ plan_type: planType }).eq('id', authData.user.id)
+    // Explicitly Log User ID for debugging
+    console.log('User created in Auth:', authData.user.id)
+    
+    // Attempt manual INSERT if trigger fails (Fallback)
+    const { error: insertError } = await supabase.from('users').upsert({
+        id: authData.user.id,
+        email: email,
+        name: name,
+        plan_type: planType
+    })
+
+    if (insertError) {
+        console.error('CRITICAL: Failed to insert public.user manually:', insertError)
+        // We continue, but this is bad.
+    } else {
+        console.log('Manual upsert to public.users successful')
+    }
   }
 
   // 2. Handle Quiz Data Sync
