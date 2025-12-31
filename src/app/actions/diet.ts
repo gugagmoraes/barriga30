@@ -43,12 +43,16 @@ export async function saveDietPreferences(formData: FormData) {
             water_bottle_size_ml: Number(formData.get('water_bottle_size_ml'))
         }
 
+        console.log('[saveDietPreferences] Starting preference save for user:', user.id)
+
         // Archive old active preferences
-        await supabase
+        const { error: archiveError } = await supabase
             .from('diet_preferences')
             .update({ is_active: false })
             .eq('user_id', user.id)
             .eq('is_active', true)
+        
+        if (archiveError) console.error('[saveDietPreferences] Archive error:', archiveError)
 
         // Insert new preferences (active by default)
         const { error } = await supabase
@@ -58,25 +62,32 @@ export async function saveDietPreferences(formData: FormData) {
                 is_active: true
             })
 
-        if (error) throw error
+        if (error) {
+             console.error('[saveDietPreferences] Insert error:', error)
+             throw error
+        }
 
         // Update User Profile basics as well to keep in sync
-        await supabase.from('users').update({
+        const { error: userError } = await supabase.from('users').update({
             weight: preferences.weight,
             height: preferences.height,
             age: preferences.age,
             gender: preferences.gender
         }).eq('id', user.id)
 
+        if (userError) console.error('[saveDietPreferences] User update error:', userError)
+
         // Generate Diet Immediately
+        console.log('[saveDietPreferences] Triggering diet generation...')
         await generateDietForUser(user.id)
+        console.log('[saveDietPreferences] Diet generation complete.')
 
         revalidatePath('/dieta')
         revalidatePath('/lista-compras')
         return { success: true }
     } catch (e) {
-        console.error('Failed to save preferences:', e)
-        return { success: false }
+        console.error('[saveDietPreferences] Failed to save preferences:', e)
+        return { success: false, error: String(e) }
     }
 }
 

@@ -191,10 +191,14 @@ async function persistShoppingLists(userId: string, snapshot: any) {
 export async function generateDietForUser(userId: string): Promise<any> {
   const supabase = await createClient()
   const { data: user } = await supabase.from('users').select('*').eq('id', userId).single()
+  // Ensure we get the active preferences
   const { data: prefs } = await supabase.from('diet_preferences').select('*').eq('user_id', userId).eq('is_active', true).single()
+  
   if (!user) throw new Error('User not found')
+  
   const limitCheck = await checkDietRegenerationLimit(userId, user.plan_type)
   if (!limitCheck.allowed) throw new Error(limitCheck.reason || 'Not allowed')
+
   const weight = prefs?.weight || user.weight || 70
   const height = prefs?.height || user.height || 165
   const age = prefs?.age || user.age || 30
@@ -202,144 +206,192 @@ export async function generateDietForUser(userId: string): Promise<any> {
   const activity = 'moderate'
   const foodPrefs = prefs?.food_preferences || {}
   const bottleSize = prefs?.water_bottle_size_ml || 500
+
   const tmb = calculateTMB(weight, height, age, gender)
   const tdee = calculateTDEE(tmb, activity)
   const targetCalories = Math.max(1200, tdee - 500)
   const waterTargetMl = Math.round(weight * 35)
   const bottlesCount = Math.ceil(waterTargetMl / bottleSize)
+
+  // Deactivate any existing active snapshots
   await supabase.from('diet_snapshots').update({ is_active: false }).eq('user_id', userId)
-  const { data: snapshot } = await supabase.from('diet_snapshots').insert({ user_id: userId, daily_calories: targetCalories, name: `Plano Personalizado (${targetCalories} kcal)`, origin: 'ai_generated', is_active: true, macros: { protein: Math.round(targetCalories * 0.3 / 4), carbs: Math.round(targetCalories * 0.4 / 4), fat: Math.round(targetCalories * 0.3 / 9), water_target_ml: waterTargetMl, water_bottle_size: bottleSize, bottles_count: bottlesCount, tmb, tdee } }).select().single()
-  if (!snapshot) throw new Error('Failed to create snapshot')
-  const mealsConfig = [
-    { name: 'Café da Manhã', order: 1, time: '08:00', ratio: 0.25 },
-    { name: 'Almoço', order: 2, time: '12:00', ratio: 0.35 },
-    { name: 'Lanche da Tarde', order: 3, time: '16:00', ratio: 0.15 },
-    { name: 'Jantar', order: 4, time: '20:00', ratio: 0.25 }
-  ]
-  let dailyFruitCount = 0
-  let lunchProteinFoodRef: FoodItem | null = null
-  let lunchCarbFoodRef: FoodItem | null = null
-  let lunchBeansUsed = false
-  let lunchProteinCal = 0
-  let lunchCarbCal = 0
-  let lunchBeansCal = 0
-  for (const m of mealsConfig) {
-    const mealCals = Math.round(targetCalories * m.ratio)
-    const { data: mealData } = await supabase.from('snapshot_meals').insert({ diet_snapshot_id: snapshot.id, name: m.name, order_index: m.order, time_of_day: m.time }).select().single()
-    if (!mealData) continue
-    const itemsToInsert: any[] = []
-    if (m.name.includes('Café')) {
-      let pCals = Math.round(mealCals * 0.4)
-      let cCals = mealCals - pCals
-      const pFood = getRandomFood(foodPrefs.proteins, 'eggs')
-      const pItem = calculatePortion(pCals, pFood, pFood.id === 'eggs' ? 4 : undefined)
-      itemsToInsert.push(pItem)
-      let fruitItem: any = null
-      if (!foodPrefs.no_fruits && dailyFruitCount < 2) {
-        const fFood = getRandomFood(foodPrefs.fruits, 'banana')
-        fruitItem = calculatePortion(80, fFood, 1)
-        dailyFruitCount++
-        cCals -= fruitItem.cal
-      }
-      let carbFood = getFoodById('bread')!
-      if (foodPrefs.carbs?.includes('sweet_potato')) carbFood = getFoodById('sweet_potato')!
-      else if (foodPrefs.carbs?.includes('bread') || foodPrefs.carbs?.includes('sliced_bread')) carbFood = getRandomFood(foodPrefs.carbs, 'bread', ['bread','sliced_bread'])
-      const cItem = calculatePortion(cCals, carbFood, carbFood.id === 'bread' ? 1 : undefined)
-      itemsToInsert.push(cItem)
-      if (fruitItem) itemsToInsert.push(fruitItem)
-    } else if (m.name.includes('Almoço')) {
-      const pCals = Math.round(mealCals * 0.4)
-      const proteinChoices = (foodPrefs.proteins || []).filter((id: string) => ['chicken','meat','fish','pork'].includes(id))
-      const pFood = getRandomFood(proteinChoices.length ? proteinChoices : foodPrefs.proteins, 'chicken')
-      const pItem = calculatePortion(pCals, pFood)
-      // Order: Rice -> Beans -> Meat -> Veggies -> Tomato
-      // We will collect items first then push in order
-      const orderedItems: any[] = []
+
+  let finalSnapshot = null
+  const maxAttempts = 3
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      console.log(`[DietGen] Attempt ${attempt + 1}/${maxAttempts} for user ${userId}`)
       
-      lunchProteinFoodRef = pFood
-      lunchProteinCal = pItem.cal
-      const carbBudget = mealCals - pItem.cal
-      // Rice mandatory if selected; Beans optional; rice >= beans
-      let carbFood = getFoodById('rice_white')!
-      if (foodPrefs.carbs?.includes('rice_white') || foodPrefs.carbs?.includes('rice_brown')) carbFood = getRandomFood(foodPrefs.carbs, 'rice_white', ['rice_white','rice_brown'])
-      let riceCals = carbBudget
-      let beansCals = 0
-      let bItem: any = null
-      if (foodPrefs.carbs?.includes('beans')) {
-        riceCals = Math.round(carbBudget * 0.6)
-        beansCals = carbBudget - riceCals
-        bItem = calculatePortion(beansCals, getFoodById('beans')!)
-        lunchBeansUsed = true
-        lunchBeansCal = bItem.cal
+      const { data: snapshot, error: snapError } = await supabase.from('diet_snapshots').insert({ 
+          user_id: userId, 
+          daily_calories: targetCalories, 
+          name: `Plano Personalizado (${targetCalories} kcal)`, 
+          origin: 'ai_generated', 
+          is_active: true, 
+          macros: { 
+              protein: Math.round(targetCalories * 0.3 / 4), 
+              carbs: Math.round(targetCalories * 0.4 / 4), 
+              fat: Math.round(targetCalories * 0.3 / 9), 
+              water_target_ml: waterTargetMl, 
+              water_bottle_size: bottleSize, 
+              bottles_count: bottlesCount, 
+              tmb, 
+              tdee 
+          } 
+      }).select().single()
+
+      if (snapError || !snapshot) {
+          console.error('[DietGen] Failed to create snapshot:', snapError)
+          continue
       }
-      const cItem = calculatePortion(riceCals, carbFood)
-      orderedItems.push(cItem) // 1. Rice
-      if (bItem) orderedItems.push(bItem) // 2. Beans
+
+      const mealsConfig = [
+        { name: 'Café da Manhã', order: 1, time: '08:00', ratio: 0.25 },
+        { name: 'Almoço', order: 2, time: '12:00', ratio: 0.35 },
+        { name: 'Lanche da Tarde', order: 3, time: '16:00', ratio: 0.15 },
+        { name: 'Jantar', order: 4, time: '20:00', ratio: 0.25 }
+      ]
+
+      let dailyFruitCount = 0
+      let lunchProteinFoodRef: FoodItem | null = null
+      let lunchCarbFoodRef: FoodItem | null = null
+      let lunchBeansUsed = false
+      let lunchProteinCal = 0
+      let lunchCarbCal = 0
+      let lunchBeansCal = 0
+
+      for (const m of mealsConfig) {
+        const mealCals = Math.round(targetCalories * m.ratio)
+        const { data: mealData } = await supabase.from('snapshot_meals').insert({ diet_snapshot_id: snapshot.id, name: m.name, order_index: m.order, time_of_day: m.time }).select().single()
+        if (!mealData) continue
+        const itemsToInsert: any[] = []
+        
+        if (m.name.includes('Café')) {
+          let pCals = Math.round(mealCals * 0.4)
+          let cCals = mealCals - pCals
+          const pFood = getRandomFood(foodPrefs.proteins, 'eggs')
+          const pItem = calculatePortion(pCals, pFood, pFood.id === 'eggs' ? 4 : undefined)
+          itemsToInsert.push(pItem)
+          let fruitItem: any = null
+          if (!foodPrefs.no_fruits && dailyFruitCount < 2) {
+            const fFood = getRandomFood(foodPrefs.fruits, 'banana')
+            fruitItem = calculatePortion(80, fFood, 1)
+            dailyFruitCount++
+            cCals -= fruitItem.cal
+          }
+          let carbFood = getFoodById('bread')!
+          if (foodPrefs.carbs?.includes('sweet_potato')) carbFood = getFoodById('sweet_potato')!
+          else if (foodPrefs.carbs?.includes('bread') || foodPrefs.carbs?.includes('sliced_bread')) carbFood = getRandomFood(foodPrefs.carbs, 'bread', ['bread','sliced_bread'])
+          const cItem = calculatePortion(cCals, carbFood, carbFood.id === 'bread' ? 1 : undefined)
+          itemsToInsert.push(cItem)
+          if (fruitItem) itemsToInsert.push(fruitItem)
+        } else if (m.name.includes('Almoço')) {
+          const pCals = Math.round(mealCals * 0.4)
+          const proteinChoices = (foodPrefs.proteins || []).filter((id: string) => ['chicken','meat','fish','pork'].includes(id))
+          const pFood = getRandomFood(proteinChoices.length ? proteinChoices : foodPrefs.proteins, 'chicken')
+          const pItem = calculatePortion(pCals, pFood)
+          
+          const orderedItems: any[] = []
+          
+          lunchProteinFoodRef = pFood
+          lunchProteinCal = pItem.cal
+          const carbBudget = mealCals - pItem.cal
+          let carbFood = getFoodById('rice_white')!
+          if (foodPrefs.carbs?.includes('rice_white') || foodPrefs.carbs?.includes('rice_brown')) carbFood = getRandomFood(foodPrefs.carbs, 'rice_white', ['rice_white','rice_brown'])
+          let riceCals = carbBudget
+          let beansCals = 0
+          let bItem: any = null
+          if (foodPrefs.carbs?.includes('beans')) {
+            riceCals = Math.round(carbBudget * 0.6)
+            beansCals = carbBudget - riceCals
+            bItem = calculatePortion(beansCals, getFoodById('beans')!)
+            lunchBeansUsed = true
+            lunchBeansCal = bItem.cal
+          }
+          const cItem = calculatePortion(riceCals, carbFood)
+          orderedItems.push(cItem) 
+          if (bItem) orderedItems.push(bItem) 
+          
+          orderedItems.push(pItem) 
+          
+          lunchCarbFoodRef = carbFood
+          lunchCarbCal = cItem.cal
+          if (!foodPrefs.no_veggies) {
+            const vegFood = getFoodById('lettuce')!
+            orderedItems.push(calculatePortion(15, vegFood)) 
+            if (foodPrefs.veggies?.includes('tomato')) orderedItems.push(calculatePortion(20, getFoodById('tomato')!, 1)) 
+          }
+          itemsToInsert.push(...orderedItems)
+        } else if (m.name.includes('Lanche')) {
+          const pCals = Math.round(mealCals * 0.5)
+          const cCals = mealCals - pCals
+          let snackProteins = (foodPrefs.proteins || [])
+          if (snackProteins.includes('eggs')) snackProteins = ['eggs']
+          const pFood = getRandomFood(snackProteins, 'eggs')
+          
+          itemsToInsert.push(calculatePortion(pCals, pFood, 4))
+          let fruitItem: any = null
+          let carbBudget = cCals
+          if (!foodPrefs.no_fruits && dailyFruitCount < 2) {
+            const fFood = getRandomFood(foodPrefs.fruits, 'apple')
+            fruitItem = calculatePortion(70, fFood, 1)
+            dailyFruitCount++
+            carbBudget -= fruitItem.cal
+          }
+          let carbFood = getFoodById('sweet_potato')!
+          if (!foodPrefs.carbs?.includes('sweet_potato')) carbFood = getRandomFood(foodPrefs.carbs, 'bread', ['bread','sliced_bread','tapioca','cuscuz'])
+          itemsToInsert.push(calculatePortion(carbBudget, carbFood, carbFood.id === 'bread' ? 1 : undefined))
+          if (fruitItem) itemsToInsert.push(fruitItem)
+        } else if (m.name.includes('Jantar')) {
+          const pFood = lunchProteinFoodRef || getRandomFood(foodPrefs.proteins, 'meat')
+          const pCals = Math.round(lunchProteinCal * 0.9)
+          itemsToInsert.push(calculatePortion(pCals, pFood))
+          if (lunchBeansUsed) {
+            const bFood = getFoodById('beans')!
+            const bCals = Math.round(lunchBeansCal * 0.8)
+            itemsToInsert.push(calculatePortion(bCals, bFood))
+          }
+          const carbFood = lunchCarbFoodRef || getFoodById('rice_white')!
+          const cCals = Math.round(lunchCarbCal * 0.8)
+          itemsToInsert.push(calculatePortion(cCals, carbFood))
+          if (!foodPrefs.no_veggies) {
+            const vegFood = getFoodById('broccoli')!
+            itemsToInsert.push(calculatePortion(30, vegFood))
+          }
+        }
+        for (const it of itemsToInsert) {
+          await supabase.from('snapshot_items').insert({ snapshot_meal_id: mealData.id, name: it.name, quantity: it.qty, calories: it.cal, category: it.category, protein: it.protein, carbs: it.carbs, fat: it.fat })
+        }
+      }
+
+      // Fetch full structure to validate
+      const { data: fullSnapshot } = await supabase.from('diet_snapshots').select('*, snapshot_meals(*, snapshot_items(*))').eq('id', snapshot.id).single()
       
-      orderedItems.push(pItem) // 3. Meat
+      const isValid = fullSnapshot ? await isDietValid(fullSnapshot, foodPrefs) : false
       
-      lunchCarbFoodRef = carbFood
-      lunchCarbCal = cItem.cal
-      if (!foodPrefs.no_veggies) {
-        const vegFood = getFoodById('lettuce')!
-        orderedItems.push(calculatePortion(15, vegFood)) // 4. Salad
-        if (foodPrefs.veggies?.includes('tomato')) orderedItems.push(calculatePortion(20, getFoodById('tomato')!, 1)) // 5. Tomato
+      if (isValid) {
+          finalSnapshot = fullSnapshot
+          break
       }
-      itemsToInsert.push(...orderedItems)
-    } else if (m.name.includes('Lanche')) {
-      const pCals = Math.round(mealCals * 0.5)
-      const cCals = mealCals - pCals
-      // Snack protein: prioritize eggs
-      let snackProteins = (foodPrefs.proteins || [])
-      if (snackProteins.includes('eggs')) snackProteins = ['eggs']
-      const pFood = getRandomFood(snackProteins, 'eggs')
-      
-      itemsToInsert.push(calculatePortion(pCals, pFood, 4))
-      let fruitItem: any = null
-      let carbBudget = cCals
-      if (!foodPrefs.no_fruits && dailyFruitCount < 2) {
-        const fFood = getRandomFood(foodPrefs.fruits, 'apple')
-        fruitItem = calculatePortion(70, fFood, 1)
-        dailyFruitCount++
-        carbBudget -= fruitItem.cal
+
+      // If invalid, cleanup unless it's the last attempt (where we might just accept it as fallback)
+      if (attempt < maxAttempts - 1) {
+          console.log('[DietGen] Invalid diet generated, retrying...')
+          await supabase.from('snapshot_items').delete().in('snapshot_meal_id', fullSnapshot?.snapshot_meals.map((m: any) => m.id) || [])
+          await supabase.from('snapshot_meals').delete().eq('diet_snapshot_id', snapshot.id)
+          await supabase.from('diet_snapshots').delete().eq('id', snapshot.id)
+      } else {
+          console.warn('[DietGen] Max attempts reached, returning last snapshot even if invalid')
+          finalSnapshot = fullSnapshot
       }
-      let carbFood = getFoodById('sweet_potato')!
-      if (!foodPrefs.carbs?.includes('sweet_potato')) carbFood = getRandomFood(foodPrefs.carbs, 'bread', ['bread','sliced_bread','tapioca','cuscuz'])
-      itemsToInsert.push(calculatePortion(carbBudget, carbFood, carbFood.id === 'bread' ? 1 : undefined))
-      if (fruitItem) itemsToInsert.push(fruitItem)
-    } else if (m.name.includes('Jantar')) {
-      const pFood = lunchProteinFoodRef || getRandomFood(foodPrefs.proteins, 'meat')
-      const pCals = Math.round(lunchProteinCal * 0.9)
-      itemsToInsert.push(calculatePortion(pCals, pFood))
-      if (lunchBeansUsed) {
-        const bFood = getFoodById('beans')!
-        const bCals = Math.round(lunchBeansCal * 0.8)
-        itemsToInsert.push(calculatePortion(bCals, bFood))
-      }
-      const carbFood = lunchCarbFoodRef || getFoodById('rice_white')!
-      const cCals = Math.round(lunchCarbCal * 0.8)
-      itemsToInsert.push(calculatePortion(cCals, carbFood))
-      if (!foodPrefs.no_veggies) {
-        const vegFood = getFoodById('broccoli')!
-        itemsToInsert.push(calculatePortion(30, vegFood))
-      }
-    }
-    for (const it of itemsToInsert) {
-      await supabase.from('snapshot_items').insert({ snapshot_meal_id: mealData.id, name: it.name, quantity: it.qty, calories: it.cal, category: it.category, protein: it.protein, carbs: it.carbs, fat: it.fat })
-    }
   }
-  const { data: fullSnapshot } = await supabase.from('diet_snapshots').select('*, snapshot_meals(*, snapshot_items(*))').eq('id', snapshot.id).single()
-  let attempts = 0
-  while (attempts < 3) {
-    if (fullSnapshot && await isDietValid(fullSnapshot, foodPrefs)) break
-    await supabase.from('snapshot_items').delete().in('snapshot_meal_id', fullSnapshot?.snapshot_meals.map((m: any) => m.id) || [])
-    await supabase.from('snapshot_meals').delete().eq('diet_snapshot_id', snapshot.id)
-    await supabase.from('diet_snapshots').delete().eq('id', snapshot.id)
-    attempts++
-    const regen = await generateDietForUser(userId)
-    return regen
+
+  if (finalSnapshot) {
+      await supabase.from('diet_regenerations').insert({ user_id: userId })
+      await persistShoppingLists(userId, finalSnapshot)
+  } else {
+      throw new Error('Failed to generate diet after multiple attempts')
   }
-  await supabase.from('diet_regenerations').insert({ user_id: userId })
-  if (fullSnapshot) await persistShoppingLists(userId, fullSnapshot)
-  return fullSnapshot || snapshot
+  
+  return finalSnapshot
 }
