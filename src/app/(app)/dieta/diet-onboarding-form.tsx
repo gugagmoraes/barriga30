@@ -93,36 +93,43 @@ export function DietOnboardingForm({ userId }: { userId: string }) {
             </div>
 
             <div className="space-y-2">
-                <Label>Preferência Principal de Alimentação</Label>
-                <RadioGroup name="food_preference" defaultValue="balanced" className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <RadioGroupItem value="balanced" id="balanced" className="peer sr-only" />
-                        <Label
-                            htmlFor="balanced"
-                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                        >
-                            <span>⚖️ Equilibrada</span>
-                        </Label>
-                    </div>
-                    <div>
-                        <RadioGroupItem value="low_carb" id="low_carb" className="peer sr-only" />
-                        <Label
-                            htmlFor="low_carb"
-                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                        >
-                            <span>🥩 Mais Proteína</span>
-                        </Label>
-                    </div>
-                    <div>
-                        <RadioGroupItem value="plant_based" id="plant_based" className="peer sr-only" />
-                        <Label
-                            htmlFor="plant_based"
-                            className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                        >
-                            <span>🥦 Mais Vegetais</span>
-                        </Label>
-                    </div>
-                </RadioGroup>
+              <Label>Preferência Principal de Alimentação</Label>
+              <p className="text-xs text-muted-foreground mb-2">Selecione o que você prefere (pode marcar mais de um se fizesse sentido, mas aqui focamos no principal)</p>
+              <RadioGroup name="food_preference" defaultValue="balanced" className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                      <RadioGroupItem value="balanced" id="balanced" className="peer sr-only" />
+                      <Label
+                          htmlFor="balanced"
+                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                      >
+                          <span className="text-xl mb-2">⚖️</span>
+                          <span className="font-semibold">Equilibrada</span>
+                          <span className="text-xs text-center text-muted-foreground mt-1">Carbo, Proteína e Gordura</span>
+                      </Label>
+                  </div>
+                  <div>
+                      <RadioGroupItem value="low_carb" id="low_carb" className="peer sr-only" />
+                      <Label
+                          htmlFor="low_carb"
+                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                      >
+                          <span className="text-xl mb-2">🥩</span>
+                          <span className="font-semibold">Mais Proteína</span>
+                          <span className="text-xs text-center text-muted-foreground mt-1">Foco em carnes e ovos</span>
+                      </Label>
+                  </div>
+                  <div>
+                      <RadioGroupItem value="plant_based" id="plant_based" className="peer sr-only" />
+                      <Label
+                          htmlFor="plant_based"
+                          className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                      >
+                          <span className="text-xl mb-2">🥦</span>
+                          <span className="font-semibold">Mais Vegetais</span>
+                          <span className="text-xs text-center text-muted-foreground mt-1">Leve e natural</span>
+                      </Label>
+                  </div>
+              </RadioGroup>
             </div>
 
             <div className="space-y-2">

@@ -3,28 +3,18 @@ import { createClient } from '@/lib/supabase/server'
 export async function getNextWorkoutForUser(userId: string) {
     const supabase = await createClient()
 
-    // 1. Get User Level
+    // 1. Get User Level (Assuming saved in users table or defaulting to beginner)
     const { data: user } = await supabase.from('users').select('plan_type, activity_level').eq('id', userId).single()
-    // Map plan_type/activity to level (simplified for MVP)
-    // Assuming plan_type doesn't dictate level, but maybe activity_level or quiz result does.
-    // For now, let's assume 'beginner' as default if not found.
-    // Ideally this should come from the quiz result (saved in users or quiz_submissions).
-    // Let's assume we store 'level' in users table or infer it.
-    // I'll check if 'level' column exists in users. I don't think so.
-    // I'll default to 'beginner' or random for now, but ideally we should save it.
-    
-    // Check if we have a 'level' in diet_preferences or we can infer.
-    // Let's use 'beginner' as fallback.
-    const userLevel = 'beginner' // TODO: Fetch real level
+    const userLevel = 'beginner' // TODO: Implement real level logic from quiz result
 
-    // 2. Get Last Completed Workout
+    // 2. Get Last Completed Workout to determine rotation
     const { data: lastLog } = await supabase
         .from('workout_logs')
         .select('workout_id, workouts(type)')
         .eq('user_id', userId)
         .order('completed_at', { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle() // Use maybeSingle to avoid error if no logs
 
     let nextType = 'A'
     if (lastLog && lastLog.workouts) {
@@ -40,7 +30,21 @@ export async function getNextWorkoutForUser(userId: string) {
         .select('*')
         .eq('level', userLevel)
         .eq('type', nextType)
-        .single()
+        .maybeSingle() // Use maybeSingle to prevent 404/error if DB is empty
+
+    // 4. Return Placeholder if no workout exists in DB (Critical Fix)
+    if (!workout) {
+        return {
+            id: 'placeholder-config',
+            name: `Treino ${nextType} (${userLevel})`,
+            description: 'Treino em configuração. Em breve disponível.',
+            level: userLevel,
+            type: nextType,
+            video_url: null,
+            duration_minutes: 0,
+            is_placeholder: true
+        }
+    }
 
     return workout
 }

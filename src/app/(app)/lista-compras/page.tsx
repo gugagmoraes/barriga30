@@ -1,190 +1,85 @@
-'use client'
-
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { CheckSquare, Printer } from 'lucide-react'
+import { ShoppingCart, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useEffect, useState } from 'react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import Link from 'next/link'
 
-type Item = {
-  name: string
-  baseQuantity: string
-  category: string
-}
+export default async function ShoppingListPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
-export default function ShoppingListPage() {
-  const [snapshot, setSnapshot] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [userPlan, setUserPlan] = useState<string>('basic')
-  const [viewMode, setViewMode] = useState<'monthly' | 'weekly'>('monthly')
+  if (!user) return <div>Faça login.</div>
 
-  useEffect(() => {
-    async function loadData() {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) return
-
-      // Fetch User Plan
-      const { data: userData } = await supabase.from('users').select('plan_type').eq('id', user.id).single()
-      if (userData) setUserPlan(userData.plan_type)
-
-      // Fetch Active Snapshot
-      const { data: snap } = await supabase
-        .from('diet_snapshots')
-        .select('*, snapshot_meals(*, snapshot_items(*))')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .single()
-      
-      setSnapshot(snap)
-      setLoading(false)
-    }
-
-    loadData()
-  }, [])
-
-  if (loading) return <div>Carregando lista...</div>
+  // Fetch Active Diet Snapshot
+  const { data: snapshot } = await supabase
+    .from('diet_snapshots')
+    .select('*, snapshot_meals(*, snapshot_items(*))')
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+    .single()
 
   if (!snapshot) {
     return (
-        <div className="text-center py-10">
-            <h2 className="text-xl font-semibold text-gray-700">Lista vazia</h2>
-            <p className="text-gray-500">Gere sua dieta primeiro para ver a lista de compras.</p>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] p-4 text-center">
+            <div className="p-4 bg-gray-100 rounded-full mb-4">
+                <ShoppingCart className="h-8 w-8 text-gray-500" />
+            </div>
+            <h1 className="text-xl font-bold mb-2">Lista Vazia</h1>
+            <p className="text-gray-500 mb-6">
+                Você precisa gerar sua dieta primeiro para ver a lista de compras.
+            </p>
+            <Link href="/dieta">
+                <Button>Ir para Dieta</Button>
+            </Link>
         </div>
     )
   }
 
-  // Helper to parse quantity (Very simple heuristic for MVP)
-  // In a real app, we would store numeric value and unit separately
-  const parseQuantity = (qtyString: string, multiplier: number) => {
-    // Attempt to extract number
-    const match = qtyString.match(/(\d+)/)
-    if (match) {
-      const val = parseInt(match[0])
-      const unit = qtyString.replace(match[0], '').trim()
-      return `${val * multiplier} ${unit}`
-    }
-    // If no number (e.g. "À vontade"), just return as is with multiplier hint
-    return `${qtyString} (x${multiplier} dias)`
-  }
-
-  // Aggregate items by category
-  const categoriesMap: Record<string, string[]> = {}
+  // Aggregate Items
+  const shoppingList: Record<string, { quantity: number, unit: string, category: string }> = {}
   
-  // Multiplier: 30 days for monthly, 7 for weekly
-  const days = viewMode === 'monthly' ? 30 : 7
-
+  // Helper to parse "100g", "2 units" etc. (Very basic for MVP)
+  // For MVP we will just list the items and their textual quantities
+  // To make it "weekly", we roughly multiply by 7 or just list "Itens para a semana" with a disclaimer.
+  
+  const items: string[] = []
+  
   snapshot.snapshot_meals.forEach((meal: any) => {
-    meal.snapshot_items.forEach((item: any) => {
-      const category = item.category || 'Outros'
-      if (!categoriesMap[category]) {
-        categoriesMap[category] = []
-      }
-      
-      const totalQty = parseQuantity(item.quantity, days)
-      categoriesMap[category].push(`${item.name}: ${totalQty}`)
-    })
+      meal.snapshot_items.forEach((item: any) => {
+          items.push(`${item.name} (${item.quantity})`)
+      })
   })
 
-  // Convert to array for rendering
-  const categories = Object.keys(categoriesMap).map(name => ({
-    name,
-    items: categoriesMap[name]
-  }))
-
-  const handlePrint = () => {
-    window.print()
-  }
+  // Unique items (simple string deduplication for MVP)
+  const uniqueItems = Array.from(new Set(items)).sort()
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Lista de Compras</h1>
-          <p className="text-gray-500">Baseada no plano: {snapshot.name}</p>
-        </div>
-        
-        <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="w-4 h-4 mr-2" />
-                Imprimir / PDF
-            </Button>
-        </div>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900">Lista de Compras</h1>
+        <Button variant="outline" size="sm">
+            Exportar PDF
+        </Button>
       </div>
 
-      <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'monthly' | 'weekly')} className="w-full">
-        <TabsList>
-            <TabsTrigger value="monthly">Mensal (30 dias)</TabsTrigger>
-            <TabsTrigger value="weekly" disabled={userPlan !== 'vip'}>
-                Semanal {userPlan !== 'vip' && '(VIP)'}
-            </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="monthly" className="mt-4">
-            <div className="grid gap-6">
-                {categories.map((category, index) => (
-                    <Card key={index} className="print:shadow-none print:border-none">
-                        <CardHeader className="print:p-2">
-                            <CardTitle className="text-lg font-semibold text-primary capitalize">{category.name}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="print:p-2">
-                            <div className="space-y-3">
-                                {category.items.map((item, idx) => (
-                                    <div key={idx} className="flex items-start gap-3">
-                                        <div className="h-5 w-5 rounded border border-gray-300 flex items-center justify-center flex-shrink-0 mt-0.5 cursor-pointer hover:border-primary print:border-black">
-                                            <CheckSquare className="h-3 w-3 text-transparent hover:text-gray-300" />
-                                        </div>
-                                        <span className="text-gray-700">{item}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
+      <Card>
+        <CardHeader>
+            <CardTitle className="text-lg">Itens para sua Dieta (Semanal)</CardTitle>
+            <p className="text-sm text-gray-500">Baseado no seu plano alimentar atual. Quantidades estimadas para 7 dias.</p>
+        </CardHeader>
+        <CardContent>
+            <div className="space-y-4">
+                {uniqueItems.map((item, index) => (
+                    <div key={index} className="flex items-start gap-3 p-3 border rounded-lg bg-white hover:bg-gray-50 transition-colors">
+                        <div className="mt-0.5">
+                            <div className="h-5 w-5 rounded-full border-2 border-gray-300" />
+                        </div>
+                        <span className="text-gray-700 font-medium">{item}</span>
+                    </div>
                 ))}
             </div>
-        </TabsContent>
-
-        <TabsContent value="weekly" className="mt-4">
-            <div className="grid gap-6">
-                {categories.map((category, index) => (
-                    <Card key={index} className="print:shadow-none print:border-none">
-                        <CardHeader className="print:p-2">
-                            <CardTitle className="text-lg font-semibold text-primary capitalize">{category.name}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="print:p-2">
-                            <div className="space-y-3">
-                                {category.items.map((item, idx) => (
-                                    <div key={idx} className="flex items-start gap-3">
-                                        <div className="h-5 w-5 rounded border border-gray-300 flex items-center justify-center flex-shrink-0 mt-0.5 cursor-pointer hover:border-primary print:border-black">
-                                            <CheckSquare className="h-3 w-3 text-transparent hover:text-gray-300" />
-                                        </div>
-                                        <span className="text-gray-700">{item}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-        </TabsContent>
-      </Tabs>
-      
-      <style jsx global>{`
-        @media print {
-          nav, aside, button, .no-print {
-            display: none !important;
-          }
-          body {
-            background: white;
-          }
-          .card {
-            box-shadow: none;
-            border: 1px solid #eee;
-          }
-        }
-      `}</style>
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -107,79 +107,36 @@ export function WorkoutProgressionCard({ status, isCriticalMode, plan }: Progres
     )
   }
 
-  // Standard Progression View
+  // Standard Progression View (Single Next Workout Only)
   const levelLabels: Record<string, string> = {
       'beginner': 'Iniciante',
       'intermediate': 'Intermediário',
       'advanced': 'Avançado'
   }
-
-  const workouts = [
-      { type: 'A', name: 'Treino A', icon: Dumbbell, color: 'text-blue-500', bg: 'bg-blue-100', current: progress.A, id: '1' },
-      { type: 'B', name: 'Treino B', icon: Zap, color: 'text-yellow-500', bg: 'bg-yellow-100', current: progress.B, id: '2' },
-      { type: 'C', name: 'Treino C', icon: Activity, color: 'text-green-500', bg: 'bg-green-100', current: progress.C, id: '3' },
-  ]
-
+  
   return (
     <Card className="shadow-sm border-gray-100">
       <CardHeader className="pb-2 border-b border-gray-50">
         <div className="flex justify-between items-center">
             <CardTitle className="text-base font-bold text-gray-900">
-                Progresso: {levelLabels[currentLevel]}
+                Seu Nível: {levelLabels[currentLevel]}
             </CardTitle>
             <span className="text-xs font-medium text-gray-400 bg-gray-50 px-2 py-1 rounded-full">
-                Meta: 5x cada
+                {currentLevel === 'advanced' ? 'Nível Máximo' : 'Próximo Nível: ' + (levelLabels[Object.keys(levelLabels)[Object.keys(levelLabels).indexOf(currentLevel) + 1]] || 'Avançado')}
             </span>
         </div>
       </CardHeader>
-      <CardContent className="pt-4 space-y-5">
-        {workouts.map((w) => {
-            const percentage = Math.min(100, (w.current / 5) * 100)
-            const isComplete = w.current >= 5
-            const message = getProgressMessage(w.current)
-            
-            return (
-                <div key={w.type} className="space-y-2">
-                    <div className="flex justify-between items-center text-sm">
-                        <div className="flex items-center gap-2">
-                            <div className={`p-1.5 rounded-md ${w.bg}`}>
-                                <w.icon className={`h-3.5 w-3.5 ${w.color}`} />
-                            </div>
-                            <span className="font-medium text-gray-700">{w.name}</span>
-                        </div>
-                        <span className={`text-xs font-bold ${isComplete ? 'text-green-600' : 'text-gray-400'}`}>
-                            {w.current}/5
-                        </span>
-                    </div>
-                    
-                    {/* Progress Bar */}
-                    <div className="h-2.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                        <div 
-                            className={`h-full transition-all duration-500 ${isComplete ? 'bg-green-500' : 'bg-primary'}`} 
-                            style={{ width: `${percentage}%` }}
-                        />
-                    </div>
-
-                    {/* Emotional Copy */}
-                    <p className="text-[10px] text-gray-400 italic text-right pr-1">
-                        {message}
-                    </p>
-
-                    {/* Start Button (only if not complete, or if Plus/VIP allows replay) */}
-                    <div className="flex justify-end">
-                        <Link href={`/treinos/${w.id}`} className="w-full">
-                            <Button 
-                                variant={isComplete ? "outline" : "secondary"} 
-                                size="sm" 
-                                className={`w-full h-8 text-xs ${isComplete ? 'opacity-50' : ''}`}
-                            >
-                                {isComplete ? 'Repetir Treino' : 'Começar'}
-                            </Button>
-                        </Link>
-                    </div>
+      <CardContent className="pt-6 pb-6">
+            <div className="space-y-4">
+                <div className="flex justify-between text-sm text-gray-600">
+                    <span>Progresso para subir de nível</span>
+                    <span className="font-bold">{Math.round((progress.A + progress.B + progress.C) / 15 * 100)}%</span>
                 </div>
-            )
-        })}
+                <Progress value={(progress.A + progress.B + progress.C) / 15 * 100} className="h-3" />
+                <p className="text-xs text-gray-400 text-center">
+                    Complete seus treinos diários para desbloquear o próximo estágio.
+                </p>
+            </div>
       </CardContent>
     </Card>
   )

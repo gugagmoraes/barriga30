@@ -9,11 +9,13 @@ export async function addWeightRecord(weight: number, date?: string) {
     if (!user) return { success: false, error: 'Unauthorized' }
 
     try {
-        await supabase.from('weight_records').insert({
+        const { error } = await supabase.from('weight_records').insert({
             user_id: user.id,
             weight: weight,
             recorded_at: date ? new Date(date).toISOString() : new Date().toISOString()
         })
+
+        if (error) throw error
 
         // Also update current weight in user profile
         await supabase.from('users').update({ weight }).eq('id', user.id)
@@ -21,8 +23,9 @@ export async function addWeightRecord(weight: number, date?: string) {
         revalidatePath('/progresso')
         revalidatePath('/dashboard')
         return { success: true }
-    } catch (e) {
-        return { success: false, error: 'Failed to save weight' }
+    } catch (e: any) {
+        console.error('Weight save error:', e)
+        return { success: false, error: e.message || 'Failed to save weight' }
     }
 }
 
@@ -32,13 +35,47 @@ export async function addMeasurements(data: any) {
     if (!user) return { success: false, error: 'Unauthorized' }
 
     try {
-        await supabase.from('measurements').insert({
+        const { error } = await supabase.from('measurements').insert({
             user_id: user.id,
             ...data
         })
+        
+        if (error) throw error
+        
         revalidatePath('/progresso')
         return { success: true }
-    } catch (e) {
-        return { success: false, error: 'Failed to save measurements' }
+    } catch (e: any) {
+        console.error('Measurements save error:', e)
+        return { success: false, error: e.message || 'Failed to save measurements' }
+    }
+}
+
+export async function uploadProgressPhoto(formData: FormData) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: 'Unauthorized' }
+
+    const photo = formData.get('photo') as File
+    if (!photo) return { success: false, error: 'No photo provided' }
+
+    try {
+        // Convert to base64 for MVP storage
+        const buffer = await photo.arrayBuffer()
+        const base64 = Buffer.from(buffer).toString('base64')
+        const dataUrl = `data:${photo.type};base64,${base64}`
+
+        const { error } = await supabase.from('progress_photos').insert({
+            user_id: user.id,
+            photo_data: dataUrl,
+            notes: formData.get('notes') as string
+        })
+
+        if (error) throw error
+
+        revalidatePath('/progresso')
+        return { success: true }
+    } catch (e: any) {
+        console.error('Photo upload error:', e)
+        return { success: false, error: e.message || 'Failed to upload photo' }
     }
 }
