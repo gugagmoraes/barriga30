@@ -144,7 +144,7 @@ async function persistShoppingLists(userId: string, snapshot: any) {
   if (monthly) { for (const it of monthlyItems) { await supabase.from('shopping_list_items').insert({ shopping_list_id: monthly.id, name: it.name, unit: it.unit, quantity: it.quantity }) } }
 }
 
-export async function generateDietForUser(userId: string) {
+export async function generateDietForUser(userId: string): Promise<any> {
   const supabase = await createClient()
   const { data: user } = await supabase.from('users').select('*').eq('id', userId).single()
   const { data: prefs } = await supabase.from('diet_preferences').select('*').eq('user_id', userId).single()
@@ -284,4 +284,3 @@ export async function generateDietForUser(userId: string) {
   if (fullSnapshot) await persistShoppingLists(userId, fullSnapshot)
   return fullSnapshot || snapshot
 }
-
