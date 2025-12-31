@@ -19,6 +19,7 @@ export const FOOD_DB: FoodItem[] = [
     { id: 'eggs', label: 'Ovos Cozidos/Mexidos', category: 'protein', calories: 70, protein: 6, carbs: 0.5, fat: 5, unit: 'unidade', default_portion: 2 },
     { id: 'fish', label: 'Peixe (Tilápia/Merluza)', category: 'protein', calories: 96, protein: 20, carbs: 0, fat: 1.7, unit: 'g', default_portion: 100 },
     { id: 'pork', label: 'Lombo Suíno Magro', category: 'protein', calories: 143, protein: 26, carbs: 0, fat: 3.5, unit: 'g', default_portion: 100 },
+    { id: 'yogurt_natural', label: 'Iogurte natural (adoçar com adoçante)', category: 'protein', calories: 60, protein: 4, carbs: 5, fat: 3, unit: 'g', default_portion: 170 }, // Approx for plain yogurt per 100g, adjusted for portion
 
     // Carbs
     { id: 'rice_white', label: 'Arroz Branco Cozido', category: 'carb', calories: 130, protein: 2.7, carbs: 28, fat: 0.3, unit: 'g', default_portion: 100 },

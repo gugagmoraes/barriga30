@@ -49,6 +49,14 @@ function calculatePortion(targetCals: number, food: FoodItem, forceMaxUnits?: nu
     return { name: food.label, qty: `${grams}g`, cal: Math.round((grams / 100) * food.calories), rawQty: grams, unit: 'g', category: food.category, protein, carbs, fat }
   }
 
+  if (food.id === 'yogurt_natural') {
+    const grams = 170 // Standard pot size
+    const protein = Number(((grams / 100) * food.protein).toFixed(1))
+    const carbs = Number(((grams / 100) * food.carbs).toFixed(1))
+    const fat = Number(((grams / 100) * food.fat).toFixed(1))
+    return { name: food.label, qty: `${grams}g (1 pote)`, cal: Math.round((grams / 100) * food.calories), rawQty: grams, unit: 'g', category: food.category, protein, carbs, fat }
+  }
+
   if (food.unit === 'unidade' || food.unit === 'fatia' || food.unit === 'colher') {
     let units = Math.max(1, Math.round((targetCals / food.calories)))
     if (forceMaxUnits) units = Math.min(units, forceMaxUnits)
@@ -183,7 +191,7 @@ async function persistShoppingLists(userId: string, snapshot: any) {
 export async function generateDietForUser(userId: string): Promise<any> {
   const supabase = await createClient()
   const { data: user } = await supabase.from('users').select('*').eq('id', userId).single()
-  const { data: prefs } = await supabase.from('diet_preferences').select('*').eq('user_id', userId).single()
+  const { data: prefs } = await supabase.from('diet_preferences').select('*').eq('user_id', userId).eq('is_active', true).single()
   if (!user) throw new Error('User not found')
   const limitCheck = await checkDietRegenerationLimit(userId, user.plan_type)
   if (!limitCheck.allowed) throw new Error(limitCheck.reason || 'Not allowed')

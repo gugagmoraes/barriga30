@@ -12,7 +12,7 @@ export default async function DietPage({ searchParams }: { searchParams?: { reco
 
   // Fetch User Plan & Preferences
   const { data: userData } = await supabase.from('users').select('plan_type').eq('id', user.id).single()
-  const { data: prefs } = await supabase.from('diet_preferences').select('*').eq('user_id', user.id).single()
+  const { data: prefs } = await supabase.from('diet_preferences').select('*').eq('user_id', user.id).eq('is_active', true).single()
   
   // 1. Fetch Active Diet Snapshot
   const { data: snapshot } = await supabase

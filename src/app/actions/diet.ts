@@ -43,10 +43,20 @@ export async function saveDietPreferences(formData: FormData) {
             water_bottle_size_ml: Number(formData.get('water_bottle_size_ml'))
         }
 
-        // Save Preferences
+        // Archive old active preferences
+        await supabase
+            .from('diet_preferences')
+            .update({ is_active: false })
+            .eq('user_id', user.id)
+            .eq('is_active', true)
+
+        // Insert new preferences (active by default)
         const { error } = await supabase
             .from('diet_preferences')
-            .upsert(preferences)
+            .insert({
+                ...preferences,
+                is_active: true
+            })
 
         if (error) throw error
 

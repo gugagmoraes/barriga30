@@ -11,7 +11,19 @@ export async function generateInitialDiet(userId: string) {
 
 export async function resetDiet(userId: string) {
   const supabase = await createClient()
-  await supabase.from('diet_snapshots').delete().eq('user_id', userId)
+  
+  // Archive active snapshot
+  await supabase.from('diet_snapshots')
+    .update({ is_active: false })
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    
+  // Archive active preferences
+  await supabase.from('diet_preferences')
+    .update({ is_active: false })
+    .eq('user_id', userId)
+    .eq('is_active', true)
+
   revalidatePath('/dieta')
   revalidatePath('/lista-compras')
   return { success: true }

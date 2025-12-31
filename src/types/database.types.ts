@@ -124,6 +124,7 @@ export interface Database {
       }
       diet_preferences: {
         Row: {
+          id: string
           user_id: string
           weight: number | null
           height: number | null
@@ -133,10 +134,12 @@ export interface Database {
           workout_duration: string | null
           food_preferences: Json | null
           water_bottle_size_ml: number | null
+          is_active: boolean | null
           created_at: string | null
           updated_at: string | null
         }
         Insert: {
+          id?: string
           user_id: string
           weight?: number | null
           height?: number | null
@@ -146,10 +149,12 @@ export interface Database {
           workout_duration?: string | null
           food_preferences?: Json | null
           water_bottle_size_ml?: number | null
+          is_active?: boolean | null
           created_at?: string | null
           updated_at?: string | null
         }
         Update: {
+          id?: string
           user_id?: string
           weight?: number | null
           height?: number | null
@@ -159,6 +164,7 @@ export interface Database {
           workout_duration?: string | null
           food_preferences?: Json | null
           water_bottle_size_ml?: number | null
+          is_active?: boolean | null
           created_at?: string | null
           updated_at?: string | null
         }
