@@ -55,34 +55,47 @@ export async function uploadProgressPhoto(formData: FormData) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'Unauthorized' }
 
-    let dataUrl = ''
-
-    // Check if we received base64 string directly (from client-side processing)
-    const photoBase64 = formData.get('photo_base64') as string
-    if (photoBase64) {
-        dataUrl = photoBase64
-    } else {
-        // Fallback to File object processing (might hit size limits on server actions)
-        const photo = formData.get('photo') as File
-        if (!photo) return { success: false, error: 'No photo provided' }
-        
-        try {
-            const buffer = await photo.arrayBuffer()
-            const base64 = Buffer.from(buffer).toString('base64')
-            dataUrl = `data:${photo.type};base64,${base64}`
-        } catch (e) {
-            return { success: false, error: 'Failed to process file on server' }
-        }
-    }
-
+    // Prefer storage upload and persist public URL
     try {
-        const { error } = await supabase.from('progress_photos').insert({
+        let mime = 'image/jpeg'
+        let base64Payload = ''
+        const photoBase64 = formData.get('photo_base64') as string
+        if (photoBase64) {
+            const match = photoBase64.match(/^data:(.+);base64,(.*)$/)
+            if (!match) return { success: false, error: 'Invalid base64 data' }
+            mime = match[1]
+            base64Payload = match[2]
+        } else {
+            const photo = formData.get('photo') as File
+            if (!photo) return { success: false, error: 'No photo provided' }
+            mime = photo.type || 'image/jpeg'
+            const buffer = await photo.arrayBuffer()
+            base64Payload = Buffer.from(buffer).toString('base64')
+        }
+
+        const fileExt = mime.split('/')[1] || 'jpg'
+        const filePath = `${user.id}/${Date.now()}.${fileExt}`
+        const fileBuffer = Buffer.from(base64Payload, 'base64')
+
+        const { error: uploadError } = await supabase.storage.from('progress-photos').upload(filePath, fileBuffer, {
+            contentType: mime,
+            upsert: true
+        })
+
+        if (uploadError) {
+            return { success: false, error: uploadError.message || 'Failed to upload to storage' }
+        }
+
+        const { data: pub } = supabase.storage.from('progress-photos').getPublicUrl(filePath)
+        const publicUrl = pub.publicUrl
+
+        const { error: insertError } = await supabase.from('progress_photos').insert({
             user_id: user.id,
-            photo_data: dataUrl,
+            photo_data: publicUrl,
             notes: formData.get('notes') as string
         })
 
-        if (error) throw error
+        if (insertError) return { success: false, error: insertError.message || 'Failed to save photo record' }
 
         revalidatePath('/progresso')
         return { success: true }

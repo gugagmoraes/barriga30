@@ -64,9 +64,8 @@ export function DietOnboardingForm({ userId }: { userId: string }) {
       const result = await saveDietPreferences(formData)
       if (result.success) {
         toast.success('Preferências salvas! Gerando sua dieta...')
-        // The server action calls revalidatePath, so the page should update.
-        // We can reload just to be sure if Next.js caching is aggressive.
-        window.location.reload()
+        // Navegar para /dieta (sem reconfigure) para exibir o novo plano
+        window.location.href = '/dieta'
       } else {
         toast.error('Erro ao salvar preferências.')
       }

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { generateInitialDiet } from './actions'
+import { generateInitialDiet, resetDiet } from './actions'
 import { Wand2, RefreshCw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
@@ -32,7 +32,17 @@ export function GenerateDietButton({ userId, variant = 'initial' }: { userId: st
         className="text-xs"
         onClick={async () => {
           const ok = window.confirm('Atualizar Plano Alimentar? Isso substituirá sua dieta atual por uma nova baseada nas suas preferências.')
-          if (ok) await handleGenerate()
+          if (ok) {
+            setIsLoading(true)
+            try {
+              await resetDiet(userId)
+              router.push('/dieta?reconfigure=1')
+            } catch (e) {
+              alert('Erro ao preparar atualização da dieta. Tente novamente.')
+            } finally {
+              setIsLoading(false)
+            }
+          }
         }}
       >
         <RefreshCw className={`mr-2 h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
@@ -54,4 +64,3 @@ export function GenerateDietButton({ userId, variant = 'initial' }: { userId: st
     </Button>
   )
 }
-

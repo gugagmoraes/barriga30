@@ -4,7 +4,7 @@ import { DietTracker } from './diet-tracker'
 import { GenerateDietButton } from './generate-button'
 import { Utensils } from 'lucide-react'
 
-export default async function DietPage() {
+export default async function DietPage({ searchParams }: { searchParams?: { reconfigure?: string } }) {
   const supabase = await createClient()
   
   const { data: { user } } = await supabase.auth.getUser()
@@ -31,22 +31,29 @@ export default async function DietPage() {
     .eq('date', today)
     .single()
 
-  // SCENARIO 1: No Snapshot (Needs Generation)
-  if (!snapshot) {
-    // If no preferences, show onboarding form
-    if (!prefs) {
-        return <DietOnboardingForm userId={user.id} />
+  const forceReconfigure = searchParams?.reconfigure === '1'
+
+  // SCENARIO 1: Force Reconfigure OR No Snapshot (Needs Generation)
+  if (forceReconfigure || !snapshot) {
+    // Always show onboarding form when forcing reconfigure
+    if (forceReconfigure) {
+      return <DietOnboardingForm userId={user.id} />
     }
 
-    // If has preferences but no snapshot, show generate button (or auto-trigger logic could go here)
+    // If no preferences, show onboarding form
+    if (!prefs) {
+      return <DietOnboardingForm userId={user.id} />
+    }
+
+    // If has preferences but no snapshot, show generate button
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-4 text-center">
         <div className="p-4 bg-orange-100 rounded-full">
-            <Utensils className="h-10 w-10 text-orange-500" />
+          <Utensils className="h-10 w-10 text-orange-500" />
         </div>
         <h1 className="text-2xl font-bold text-gray-900">Seus dados estão prontos!</h1>
         <p className="text-gray-500 max-w-md">
-            Recebemos suas preferências. Clique abaixo para gerar seu plano alimentar personalizado agora mesmo.
+          Recebemos suas preferências. Clique abaixo para gerar seu plano alimentar personalizado agora mesmo.
         </p>
         <GenerateDietButton userId={user.id} />
       </div>
