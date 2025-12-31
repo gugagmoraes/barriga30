@@ -61,9 +61,12 @@ export default async function DietPage() {
             <h1 className="text-2xl font-bold text-gray-900">Minha Dieta</h1>
             <p className="text-gray-500 text-sm">Acompanhe suas refeições de hoje</p>
          </div>
-         <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">
-            {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
-         </span>
+         <div className="flex flex-col items-end gap-1">
+             <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">
+                {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+             </span>
+             <GenerateDietButton userId={user.id} variant="update" />
+         </div>
       </div>
 
       <DietTracker 

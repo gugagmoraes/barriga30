@@ -243,66 +243,86 @@ export async function generateDietForUser(userId: string) {
 
       // --- BREAKFAST ---
       if (m.name.includes('Café')) {
-        // Rules: Bread OR Sweet Potato + Protein. Fruit Optional (max 1).
-        // 60% Carb/Fruit, 40% Protein
-        
+        // Rules: 
+        // 1. Carb mandatory: Bread OR Sweet Potato (Prioritize Sweet Potato if available for morning)
+        // 2. Protein mandatory
+        // 3. Fruit Optional (max 1)
+
         let proteinCals = mealCals * 0.4
         let carbCals = mealCals * 0.6
         
         // Protein: Eggs or Cheese (fallback Eggs)
         const proteinFood = getRandomFood(foodPrefs.proteins, 'eggs')
-        const proteinItem = calculatePortion(proteinCals, proteinFood)
+        const proteinItem = calculatePortion(proteinCals, proteinFood, proteinFood.id === 'eggs' ? 4 : undefined)
         itemsToInsert.push(proteinItem)
-        
-        // Carb: Bread, Tapioca, Cuscuz, Sweet Potato
-        const allowedCarbs = ['bread', 'sliced_bread', 'tapioca', 'cuscuz', 'sweet_potato']
-        const carbFood = getRandomFood(foodPrefs.carbs, 'bread', allowedCarbs)
         
         // Check if we can add fruit
         let fruitItem = null
         if (!foodPrefs.no_fruits && dailyFruitCount < 2) {
-             // 1 Fruit unit
              const fruitFood = getRandomFood(foodPrefs.fruits, 'banana')
-             fruitItem = calculatePortion(80, fruitFood, 1) // ~80kcal for 1 fruit
+             fruitItem = calculatePortion(80, fruitFood, 1) // Force 1 unit max
              dailyFruitCount++
              carbCals -= fruitItem.cal
         }
 
-        const carbItem = calculatePortion(carbCals, carbFood)
+        // Carb: Bread, Sweet Potato, Tapioca, Cuscuz
+        // Strict Priority: Sweet Potato > Bread > Others
+        const allowedCarbs = ['sweet_potato', 'bread', 'sliced_bread', 'tapioca', 'cuscuz']
+        let carbFood = getFoodById('bread')! // default
+        
+        if (foodPrefs.carbs?.includes('sweet_potato')) {
+             carbFood = getFoodById('sweet_potato')!
+        } else if (foodPrefs.carbs?.includes('bread') || foodPrefs.carbs?.includes('sliced_bread')) {
+             carbFood = getRandomFood(foodPrefs.carbs, 'bread', ['bread', 'sliced_bread'])
+        } else {
+             carbFood = getRandomFood(foodPrefs.carbs, 'bread', allowedCarbs)
+        }
+
+        const carbItem = calculatePortion(carbCals, carbFood, carbFood.id === 'bread' ? 1 : undefined) // Max 1 bread unit per meal as per rule
         itemsToInsert.push(carbItem)
+        
         if (fruitItem) itemsToInsert.push(fruitItem)
       }
 
       // --- LUNCH ---
       else if (m.name.includes('Almoço')) {
-        // Rules: Rice + Beans + Protein + Salad. No Bread.
-        // 35% Protein, 45% Carb (Rice+Beans), 20% Veg/Free
-        
-        // Prioritize Protein
+        // Rules: 
+        // 1. Rice + Beans + Protein + Salad mandatory if selected.
+        // 2. No Bread, No Sweet Potato.
+        // 3. Protein is King.
+
         const proteinCals = mealCals * 0.40
         const proteinFood = getRandomFood(foodPrefs.proteins, 'chicken')
         itemsToInsert.push(calculatePortion(proteinCals, proteinFood))
 
-        // Beans Logic
         let remainingCals = mealCals - itemsToInsert[0].cal
         
+        // Beans Logic (Mandatory if selected)
         if (foodPrefs.carbs?.includes('beans')) {
-            const beansCals = remainingCals * 0.4 // 40% of remaining for beans
+            const beansCals = remainingCals * 0.35 // ~35% of remaining
             const beansFood = getFoodById('beans')!
             itemsToInsert.push(calculatePortion(beansCals, beansFood))
             remainingCals -= itemsToInsert[itemsToInsert.length-1].cal
         }
         
-        // Rice/Other Carb (No bread)
-        const allowedCarbs = ['rice_white', 'rice_brown', 'potato', 'sweet_potato', 'pasta', 'cassava']
-        const carbFood = getRandomFood(foodPrefs.carbs, 'rice_white', allowedCarbs)
-        // Use remaining cals for main carb
-        itemsToInsert.push(calculatePortion(remainingCals * 0.8, carbFood)) // Leave 20% for veg margin
+        // Rice Logic (Mandatory if selected, else other valid carb)
+        // Allowed: Rice, Pasta, Potato, Cassava. 
+        // BANNED: Sweet Potato, Bread.
+        const allowedCarbs = ['rice_white', 'rice_brown', 'pasta', 'potato', 'cassava']
+        let carbFood = getFoodById('rice_white')!
+        
+        if (foodPrefs.carbs?.includes('rice_white') || foodPrefs.carbs?.includes('rice_brown')) {
+             carbFood = getRandomFood(foodPrefs.carbs, 'rice_white', ['rice_white', 'rice_brown'])
+        } else {
+             carbFood = getRandomFood(foodPrefs.carbs, 'rice_white', allowedCarbs)
+        }
+        
+        itemsToInsert.push(calculatePortion(remainingCals * 0.9, carbFood)) // Leave small room for salad
 
-        // Veggies / Salad (Tomato allowed)
+        // Veggies / Salad (Lettuce + Tomato)
         if (!foodPrefs.no_veggies) {
-            const vegFood = getRandomFood(foodPrefs.veggies, 'lettuce') // Lettuce is free
-            itemsToInsert.push(calculatePortion(20, vegFood)) // Minimal cals
+            const vegFood = getFoodById('lettuce')!
+            itemsToInsert.push(calculatePortion(15, vegFood)) // "À vontade" logic handled inside calculatePortion
             
             // Add Tomato if selected
             if (foodPrefs.veggies?.includes('tomato')) {
@@ -314,16 +334,16 @@ export async function generateDietForUser(userId: string) {
 
       // --- SNACK ---
       else if (m.name.includes('Lanche')) {
-        // Rules: Protein + Good Carb. Fruit max 1 if needed.
-        // 50% Protein, 50% Carb
+        // Rules: Protein + Good Carb. 
+        // Carb Priority: Sweet Potato > Bread
         
         let proteinCals = mealCals * 0.5
         let carbCals = mealCals * 0.5
 
         const proteinFood = getRandomFood(foodPrefs.proteins, 'eggs') 
-        itemsToInsert.push(calculatePortion(proteinCals, proteinFood))
+        itemsToInsert.push(calculatePortion(proteinCals, proteinFood, 4))
 
-        // Fruit logic
+        // Fruit logic (Only if daily count < 2)
         let fruitItem = null
         if (!foodPrefs.no_fruits && dailyFruitCount < 2) {
              const fruitFood = getRandomFood(foodPrefs.fruits, 'apple')
@@ -333,19 +353,28 @@ export async function generateDietForUser(userId: string) {
         }
         
         // Good Carb
-        const allowedCarbs = ['sweet_potato', 'bread', 'sliced_bread', 'tapioca']
-        const carbFood = getRandomFood(foodPrefs.carbs, 'sweet_potato', allowedCarbs)
-        itemsToInsert.push(calculatePortion(carbCals, carbFood))
+        const allowedCarbs = ['sweet_potato', 'bread', 'sliced_bread', 'tapioca', 'cuscuz']
+        let carbFood = getFoodById('sweet_potato')!
+        
+        if (foodPrefs.carbs?.includes('sweet_potato')) {
+            carbFood = getFoodById('sweet_potato')!
+        } else {
+            carbFood = getRandomFood(foodPrefs.carbs, 'bread', allowedCarbs)
+        }
+
+        const carbItem = calculatePortion(carbCals, carbFood, carbFood.id === 'bread' ? 1 : undefined)
+        itemsToInsert.push(carbItem)
         
         if (fruitItem) itemsToInsert.push(fruitItem)
       }
 
       // --- DINNER ---
       else if (m.name.includes('Jantar')) {
-         // Same as lunch but lighter. 
-         // 40% Protein, 40% Carb, 20% Veg.
+         // Rules: Similar to Lunch but lighter.
+         // Rice/Beans reduced by ~20%. Protein reduced by ~10%.
+         // Strict: No Bread, No Sweet Potato, No Fruit.
          
-         const proteinCals = mealCals * 0.45 // High protein
+         const proteinCals = mealCals * 0.45 
          const proteinFood = getRandomFood(foodPrefs.proteins, 'meat')
          itemsToInsert.push(calculatePortion(proteinCals, proteinFood))
 
@@ -358,12 +387,19 @@ export async function generateDietForUser(userId: string) {
              remainingCals -= itemsToInsert[itemsToInsert.length-1].cal
          }
 
-         const allowedCarbs = ['rice_white', 'rice_brown', 'potato', 'sweet_potato', 'cassava'] // Pasta maybe heavy for dinner? Let's keep it allowing user choice
-         const carbFood = getRandomFood(foodPrefs.carbs, 'potato', allowedCarbs)
-         itemsToInsert.push(calculatePortion(remainingCals * 0.8, carbFood))
+         const allowedCarbs = ['rice_white', 'rice_brown', 'pasta', 'potato', 'cassava']
+         let carbFood = getFoodById('rice_white')!
+
+         if (foodPrefs.carbs?.includes('rice_white') || foodPrefs.carbs?.includes('rice_brown')) {
+             carbFood = getRandomFood(foodPrefs.carbs, 'rice_white', ['rice_white', 'rice_brown'])
+         } else {
+             carbFood = getRandomFood(foodPrefs.carbs, 'rice_white', allowedCarbs)
+         }
+
+         itemsToInsert.push(calculatePortion(remainingCals * 0.9, carbFood))
 
          if (!foodPrefs.no_veggies) {
-             const vegFood = getRandomFood(foodPrefs.veggies, 'broccoli')
+             const vegFood = getRandomFood(foodPrefs.veggies, 'broccoli') // No tomato at dinner? Prompt said "Tomato allowed" at lunch, strictness implied maybe less at dinner or same. Let's keep Broccoli/Leafy.
              itemsToInsert.push(calculatePortion(30, vegFood))
          }
       }
