@@ -10,6 +10,22 @@ const ACTIVITY_MULTIPLIERS: Record<string, number> = {
   'very_active': 1.9
 }
 
+const FOOD_LABELS: Record<string, string> = {
+    chicken: 'Frango Grelhado',
+    meat: 'Carne Magra Moída',
+    eggs: 'Ovos Cozidos/Mexidos',
+    fish: 'Peixe Assado/Grelhado',
+    rice: 'Arroz Branco/Integral',
+    beans: 'Feijão',
+    potato: 'Batata Cozida/Assada',
+    pasta: 'Macarrão Integral',
+    bread: 'Pão Francês',
+    lettuce: 'Alface',
+    tomato: 'Tomate',
+    carrot: 'Cenoura Ralada',
+    broccoli: 'Brócolis Cozido'
+}
+
 // Mifflin-St Jeor Equation
 function calculateTMB(weight: number, height: number, age: number, gender: string): number {
   let tmb = (10 * weight) + (6.25 * height) - (5 * age)
@@ -23,34 +39,35 @@ function calculateTDEE(tmb: number, activityLevel: string): number {
   return Math.round(tmb * multiplier)
 }
 
-// Basic Food Database / Algorithm
-function getPortion(calories: number, category: 'protein' | 'carb' | 'fat' | 'veg', preference: string = 'balanced'): { name: string, quantity: string, cal: number } {
+function getPreferredFood(category: 'proteins' | 'carbs' | 'veggies', preferences: any, defaultName: string) {
+    const list = preferences?.[category]
+    if (list && Array.isArray(list) && list.length > 0) {
+        // Pick random
+        const key = list[Math.floor(Math.random() * list.length)]
+        return FOOD_LABELS[key] || defaultName
+    }
+    return defaultName
+}
+
+function getPortion(calories: number, category: 'protein' | 'carb' | 'fat' | 'veg', preferences: any): { name: string, quantity: string, cal: number } {
   const scale = calories / 2000; 
   
-  // Adjust based on preference
-  let proteinMod = 1
-  let carbMod = 1
-  let vegMod = 1
-
-  if (preference === 'low_carb') {
-      proteinMod = 1.2
-      carbMod = 0.7
-      vegMod = 1.3
-  } else if (preference === 'plant_based') {
-      vegMod = 1.5
-      proteinMod = 0.9 // Plant protein sources
-  }
-
   if (category === 'protein') {
-    return { name: 'Frango, Peixe ou Tofu Grelhado', quantity: `${Math.round(150 * scale * proteinMod)}g`, cal: Math.round(165 * scale * proteinMod) }
+    const name = getPreferredFood('proteins', preferences, 'Frango Grelhado')
+    return { name, quantity: `${Math.round(150 * scale)}g`, cal: Math.round(165 * scale) }
   }
   if (category === 'carb') {
-    return { name: 'Arroz Integral, Batata Doce ou Quinoa', quantity: `${Math.round(100 * scale * carbMod)}g`, cal: Math.round(130 * scale * carbMod) }
+    const name = getPreferredFood('carbs', preferences, 'Arroz Integral')
+    return { name, quantity: `${Math.round(100 * scale)}g`, cal: Math.round(130 * scale) }
   }
   if (category === 'fat') {
     return { name: 'Azeite de Oliva ou Castanhas', quantity: '1 colher', cal: 120 }
   }
-  return { name: 'Legumes Variados (Brócolis/Cenoura/Abobrinha)', quantity: 'À vontade', cal: 50 }
+  if (category === 'veg') {
+    const name = getPreferredFood('veggies', preferences, 'Legumes Variados')
+    return { name, quantity: 'À vontade', cal: 50 }
+  }
+  return { name: 'Alimento', quantity: '1 porção', cal: 100 }
 }
 
 export async function checkDietRegenerationLimit(userId: string, planType: PlanType) {
@@ -107,14 +124,14 @@ export async function generateDietForUser(userId: string) {
   const limitCheck = await checkDietRegenerationLimit(userId, user.plan_type)
   if (!limitCheck.allowed) throw new Error(limitCheck.reason)
 
-  // 3. Calculate Calories (Prioritize Prefs)
+  // 3. Calculate Calories
   const weight = prefs?.weight || user.weight || 70
   const height = prefs?.height || user.height || 165
   const age = prefs?.age || user.age || 30
   const gender = prefs?.gender || user.gender || 'female'
-  const activity = 'moderate' // Simplify for MVP or map workout_frequency to activity
+  const activity = 'moderate' 
   
-  const foodPreference = (prefs?.food_preferences as any)?.main || 'balanced'
+  const foodPreferences = prefs?.food_preferences || {}
   const bottleSize = prefs?.water_bottle_size_ml || 500
 
   const tmb = calculateTMB(weight, height, age, gender)
@@ -179,23 +196,25 @@ export async function generateDietForUser(userId: string) {
       const items = []
       
       if (m.name.includes('Café')) {
-        items.push({ name: 'Ovos Mexidos ou Cozidos', qty: '2 unidades', cal: 140, cat: 'protein' })
-        items.push({ name: 'Fruta (Mamão/Melão/Morangos)', qty: '1 porção média', cal: 60, cat: 'carb' })
+        const pName = getPreferredFood('proteins', foodPreferences, 'Ovos')
+        const cName = getPreferredFood('carbs', foodPreferences, 'Fruta')
+        items.push({ name: pName, qty: '2 unidades/fatias', cal: 140, cat: 'protein' })
+        items.push({ name: cName, qty: '1 porção média', cal: 60, cat: 'carb' })
         items.push({ name: 'Café/Chá sem açúcar', qty: '1 xícara', cal: 5, cat: 'other' })
       } else if (m.name.includes('Lanche')) {
          items.push({ name: 'Iogurte Natural ou Whey', qty: '1 porção', cal: 100, cat: 'protein' })
          items.push({ name: 'Castanhas ou Pasta de Amendoim', qty: '1 porção pequena', cal: 80, cat: 'fat' })
       } else {
          // Lunch/Dinner logic (Scaled)
-         const p = getPortion(targetCalories, 'protein', foodPreference)
-         const c = getPortion(targetCalories, 'carb', foodPreference)
-         const v = getPortion(targetCalories, 'veg', foodPreference)
+         const p = getPortion(targetCalories, 'protein', foodPreferences)
+         const c = getPortion(targetCalories, 'carb', foodPreferences)
+         const v = getPortion(targetCalories, 'veg', foodPreferences)
          
          items.push({ name: p.name, qty: p.quantity, cal: p.cal, cat: 'protein' })
          if (m.name.includes('Almoço')) {
             items.push({ name: c.name, qty: c.quantity, cal: c.cal, cat: 'carb' })
          } else {
-            // Dinner: lighter carb
+            // Dinner: lighter carb (just veg + protein usually, but adding small carb if needed)
             items.push({ name: 'Salada de Folhas Verdes', qty: 'À vontade', cal: 20, cat: 'veg' })
          }
          items.push({ name: v.name, qty: v.quantity, cal: v.cal, cat: 'veg' })

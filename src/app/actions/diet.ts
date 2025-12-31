@@ -16,21 +16,27 @@ export async function saveDietPreferences(formData: FormData) {
 
     if (!user) return { success: false, error: 'Unauthorized' }
 
-    const preferences = {
-        user_id: user.id,
-        age: Number(formData.get('age')),
-        gender: formData.get('gender') as string,
-        weight: Number(formData.get('weight')),
-        height: Number(formData.get('height')),
-        workout_frequency: formData.get('workout_frequency') as string,
-        workout_duration: formData.get('workout_duration') as string,
-        food_preferences: {
-            main: formData.get('food_preference')
-        },
-        water_bottle_size_ml: Number(formData.get('water_bottle_size_ml'))
-    }
-
     try {
+        const selectedProteins = JSON.parse(formData.get('selected_proteins') as string || '[]')
+        const selectedCarbs = JSON.parse(formData.get('selected_carbs') as string || '[]')
+        const selectedVeggies = JSON.parse(formData.get('selected_veggies') as string || '[]')
+
+        const preferences = {
+            user_id: user.id,
+            age: Number(formData.get('age')),
+            gender: formData.get('gender') as string,
+            weight: Number(formData.get('weight')),
+            height: Number(formData.get('height')),
+            workout_frequency: formData.get('workout_frequency') as string,
+            workout_duration: formData.get('workout_duration') as string,
+            food_preferences: {
+                proteins: selectedProteins,
+                carbs: selectedCarbs,
+                veggies: selectedVeggies
+            },
+            water_bottle_size_ml: Number(formData.get('water_bottle_size_ml'))
+        }
+
         // Save Preferences
         const { error } = await supabase
             .from('diet_preferences')
@@ -50,6 +56,7 @@ export async function saveDietPreferences(formData: FormData) {
         await generateDietForUser(user.id)
 
         revalidatePath('/dieta')
+        revalidatePath('/lista-compras')
         return { success: true }
     } catch (e) {
         console.error('Failed to save preferences:', e)
@@ -88,6 +95,7 @@ export async function regenerateDietAction(input: RegenerateInput) {
     await generateDietForUser(user.id)
 
     revalidatePath('/dieta')
+    revalidatePath('/lista-compras')
     return { success: true }
 
   } catch (e: any) {

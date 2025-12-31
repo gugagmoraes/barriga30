@@ -1,8 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ShoppingCart, CheckCircle2 } from 'lucide-react'
+import { ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import { ShoppingListItem } from './shopping-list-item'
 
 export default async function ShoppingListPage() {
   const supabase = await createClient()
@@ -36,12 +37,6 @@ export default async function ShoppingListPage() {
   }
 
   // Aggregate Items
-  const shoppingList: Record<string, { quantity: number, unit: string, category: string }> = {}
-  
-  // Helper to parse "100g", "2 units" etc. (Very basic for MVP)
-  // For MVP we will just list the items and their textual quantities
-  // To make it "weekly", we roughly multiply by 7 or just list "Itens para a semana" with a disclaimer.
-  
   const items: string[] = []
   
   snapshot.snapshot_meals.forEach((meal: any) => {
@@ -70,12 +65,7 @@ export default async function ShoppingListPage() {
         <CardContent>
             <div className="space-y-4">
                 {uniqueItems.map((item, index) => (
-                    <div key={index} className="flex items-start gap-3 p-3 border rounded-lg bg-white hover:bg-gray-50 transition-colors">
-                        <div className="mt-0.5">
-                            <div className="h-5 w-5 rounded-full border-2 border-gray-300" />
-                        </div>
-                        <span className="text-gray-700 font-medium">{item}</span>
-                    </div>
+                    <ShoppingListItem key={index} item={item} />
                 ))}
             </div>
         </CardContent>
