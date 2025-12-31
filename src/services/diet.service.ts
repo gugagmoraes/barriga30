@@ -70,7 +70,7 @@ function calculatePortion(targetCals: number, food: FoodItem, forceMaxUnits?: nu
   return { name: food.label, qty: `${grams}g`, cal: Math.round((grams / 100) * food.calories), rawQty: grams, unit: 'g', category: food.category, protein, carbs, fat }
 }
 
-export async function checkDietRegenerationLimit(userId: string, planType: PlanType) {
+export async function checkDietRegenerationLimit(userId: string, planType: PlanType): Promise<{ allowed: boolean; reason?: string }> {
   return { allowed: true }
 }
 
