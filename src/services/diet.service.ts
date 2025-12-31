@@ -57,22 +57,7 @@ function calculatePortion(targetCals: number, food: FoodItem, forceMaxUnits?: nu
 }
 
 export async function checkDietRegenerationLimit(userId: string, planType: PlanType) {
-  const supabase = await createClient()
-  if (planType === 'vip') return { allowed: true }
-  if (planType === 'basic') {
-    const { count, error } = await supabase.from('diet_regenerations').select('*', { count: 'exact', head: true }).eq('user_id', userId)
-    if (error) throw error
-    if (count && count > 0) return { allowed: false, reason: 'Plano Básico permite apenas uma geração de dieta.' }
-    return { allowed: true }
-  }
-  if (planType === 'plus') {
-    const start = startOfMonth(new Date()).toISOString()
-    const { count, error } = await supabase.from('diet_regenerations').select('*', { count: 'exact', head: true }).eq('user_id', userId).gte('created_at', start)
-    if (error) throw error
-    if (count && count >= 2) return { allowed: false, reason: 'Plano Plus permite atualizar a dieta 2 vezes por mês.' }
-    return { allowed: true }
-  }
-  return { allowed: false, reason: 'Plano desconhecido.' }
+  return { allowed: true }
 }
 
 async function isDietValid(snapshot: any, foodPrefs: any) {
@@ -81,6 +66,8 @@ async function isDietValid(snapshot: any, foodPrefs: any) {
   const hasBread = (name: string) => name.toLowerCase().includes('pão') || name.toLowerCase().includes('forma')
   const hasSweetPotato = (name: string) => name.toLowerCase().includes('batata doce')
   let fruitCount = 0
+  let totalRiceGrams = 0
+  let totalSweetPotatoGrams = 0
   for (const meal of snapshot.snapshot_meals) {
     const items = meal.snapshot_items
     if (meal.name.includes('Almoço') || meal.name.includes('Jantar')) {
@@ -93,6 +80,25 @@ async function isDietValid(snapshot: any, foodPrefs: any) {
       if (names.some(hasBread)) return false
       if (names.some(hasSweetPotato)) return false
       if (items.some((i: any) => i.category === 'fruit')) return false
+      // Require meat/fish/chicken/pork presence (eggs alone not allowed)
+      const proteinItems = items.filter((i: any) => i.category === 'protein')
+      const hasMeat = proteinItems.some((p: any) => {
+        const n = (p.name || '').toLowerCase()
+        return n.includes('frango') || n.includes('carne') || n.includes('peixe') || n.includes('porco')
+      })
+      if (!hasMeat) return false
+      // Enforce Rice >= Beans by grams
+      const rice = items.find((i: any) => hasRice(i.name))
+      const beans = items.find((i: any) => hasBeans(i.name))
+      const parseGrams = (q: string) => {
+        const m = (q || '').match(/(\d+)\s*g/i)
+        return m ? parseInt(m[1], 10) : 0
+      }
+      if (rice && beans) {
+        const rg = parseGrams(rice.quantity)
+        const bg = parseGrams(beans.quantity)
+        if (bg > rg) return false
+      }
     }
     if (meal.name.includes('Café')) {
       const hasProtein = items.some((i: any) => i.category === 'protein')
@@ -110,8 +116,17 @@ async function isDietValid(snapshot: any, foodPrefs: any) {
       if (!allowed) return false
     }
     fruitCount += items.filter((i: any) => i.category === 'fruit').length
+    // Day-level rice vs sweet potato
+    for (const it of items) {
+      const qty = it.quantity as string
+      const m = (qty || '').match(/(\d+)\s*g/i)
+      const grams = m ? parseInt(m[1], 10) : 0
+      if (hasRice(it.name)) totalRiceGrams += grams
+      if (hasSweetPotato(it.name)) totalSweetPotatoGrams += grams
+    }
   }
   if (fruitCount > 2) return false
+  if (totalSweetPotatoGrams > 0 && totalSweetPotatoGrams >= totalRiceGrams) return false
   return true
 }
 
@@ -205,24 +220,27 @@ export async function generateDietForUser(userId: string): Promise<any> {
       if (fruitItem) itemsToInsert.push(fruitItem)
     } else if (m.name.includes('Almoço')) {
       const pCals = Math.round(mealCals * 0.4)
-      const pFood = getRandomFood(foodPrefs.proteins, 'chicken')
+      const proteinChoices = (foodPrefs.proteins || []).filter((id: string) => ['chicken','meat','fish','pork'].includes(id))
+      const pFood = getRandomFood(proteinChoices.length ? proteinChoices : foodPrefs.proteins, 'chicken')
       const pItem = calculatePortion(pCals, pFood)
       itemsToInsert.push(pItem)
       lunchProteinFoodRef = pFood
       lunchProteinCal = pItem.cal
-      let remaining = mealCals - pItem.cal
+      const carbBudget = mealCals - pItem.cal
+      // Rice mandatory if selected; Beans optional; rice >= beans
+      let carbFood = getFoodById('rice_white')!
+      if (foodPrefs.carbs?.includes('rice_white') || foodPrefs.carbs?.includes('rice_brown')) carbFood = getRandomFood(foodPrefs.carbs, 'rice_white', ['rice_white','rice_brown'])
+      let riceCals = carbBudget
+      let beansCals = 0
       if (foodPrefs.carbs?.includes('beans')) {
-        const bCals = Math.round(remaining * 0.35)
-        const bFood = getFoodById('beans')!
-        const bItem = calculatePortion(bCals, bFood)
+        riceCals = Math.round(carbBudget * 0.6)
+        beansCals = carbBudget - riceCals
+        const bItem = calculatePortion(beansCals, getFoodById('beans')!)
         itemsToInsert.push(bItem)
         lunchBeansUsed = true
         lunchBeansCal = bItem.cal
-        remaining -= bItem.cal
       }
-      let carbFood = getFoodById('rice_white')!
-      if (foodPrefs.carbs?.includes('rice_white') || foodPrefs.carbs?.includes('rice_brown')) carbFood = getRandomFood(foodPrefs.carbs, 'rice_white', ['rice_white','rice_brown'])
-      const cItem = calculatePortion(Math.round(remaining * 0.9), carbFood)
+      const cItem = calculatePortion(riceCals, carbFood)
       itemsToInsert.push(cItem)
       lunchCarbFoodRef = carbFood
       lunchCarbCal = cItem.cal

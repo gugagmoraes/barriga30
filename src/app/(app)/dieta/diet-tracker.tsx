@@ -61,12 +61,12 @@ export function DietTracker({ snapshot, dailyTracking, date }: DietTrackerProps)
         </Card>
       </div>
 
-      {/* Water Tracker */}
+      {/* Água Tracker */}
       <Card>
         <CardHeader>
             <CardTitle className="flex items-center gap-2">
                 <Droplets className="h-5 w-5 text-blue-500" />
-                Hidratação ({bottleSize}ml por garrafa)
+                ÁGUA ({bottleSize}ml por garrafa)
             </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -85,9 +85,10 @@ export function DietTracker({ snapshot, dailyTracking, date }: DietTrackerProps)
                             />
                         ))}
                     </div>
-                    <span className="text-sm text-gray-500 ml-2">
-                        {currentBottles}/{targetBottles} garrafas
-                    </span>
+                    <div className="ml-2">
+                        <span className="text-sm text-gray-700 font-medium">{currentBottles}/{targetBottles} garrafas</span>
+                        <p className="text-xs text-gray-500">Conte apenas água pura (sem suco, café ou refrigerante).</p>
+                    </div>
                 </div>
                 <div className="flex gap-2">
                     <Button 
