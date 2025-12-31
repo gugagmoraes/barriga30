@@ -5,17 +5,6 @@ import { Button } from '@/components/ui/button'
 import { generateInitialDiet } from './actions'
 import { Wand2, RefreshCw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
 
 export function GenerateDietButton({ userId, variant = 'initial' }: { userId: string, variant?: 'initial' | 'update' }) {
   const [isLoading, setIsLoading] = useState(false)
@@ -35,29 +24,21 @@ export function GenerateDietButton({ userId, variant = 'initial' }: { userId: st
   }
 
   if (variant === 'update') {
-      return (
-        <AlertDialog>
-            <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" disabled={isLoading} className="text-xs">
-                    <RefreshCw className={`mr-2 h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
-                    Atualizar Dieta
-                </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Atualizar Plano Alimentar?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        Isso irá gerar um novo cardápio baseado nas suas preferências atuais. 
-                        A dieta atual será substituída.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleGenerate}>Confirmar Atualização</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-      )
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={isLoading}
+        className="text-xs"
+        onClick={async () => {
+          const ok = window.confirm('Atualizar Plano Alimentar? Isso substituirá sua dieta atual por uma nova baseada nas suas preferências.')
+          if (ok) await handleGenerate()
+        }}
+      >
+        <RefreshCw className={`mr-2 h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
+        Atualizar Dieta
+      </Button>
+    )
   }
 
   return (
@@ -73,3 +54,4 @@ export function GenerateDietButton({ userId, variant = 'initial' }: { userId: st
     </Button>
   )
 }
+
