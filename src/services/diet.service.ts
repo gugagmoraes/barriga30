@@ -12,15 +12,35 @@ const ACTIVITY_MULTIPLIERS: Record<string, number> = {
 }
 
 function calculateTMB(weight: number, height: number, age: number, gender: string): number {
-  let tmb = (10 * weight) + (6.25 * height) - (5 * age)
-  if (gender.toLowerCase().startsWith('m')) tmb += 5
-  else tmb -= 161
-  return Math.round(tmb)
+  // Harris-Benedict (Women)
+  // TMB = 655 + (9.6 × peso) + (1.8 × altura) - (4.7 × idade)
+  if (gender.toLowerCase().startsWith('f')) {
+    return Math.round(655 + (9.6 * weight) + (1.8 * height) - (4.7 * age))
+  }
+  // Harris-Benedict (Men) - Optional/Fallback
+  return Math.round(66.5 + (13.75 * weight) + (5.003 * height) - (6.75 * age))
 }
 
-function calculateTDEE(tmb: number, activityLevel: string): number {
-  const multiplier = ACTIVITY_MULTIPLIERS[activityLevel] || 1.2
-  return Math.round(tmb * multiplier)
+function calculateDailyExerciseBurn(workoutDurationStr: string, workoutFrequencyStr: string): number {
+  // Estimate calories per session
+  let calPerSession = 0
+  const duration = parseInt(workoutDurationStr || '0', 10)
+  
+  if (duration >= 30) calPerSession = 300
+  else if (duration >= 20) calPerSession = 200
+  else if (duration >= 15) calPerSession = 150
+  else calPerSession = 0
+
+  // Parse frequency
+  let freq = 0
+  if (workoutFrequencyStr === '1-2') freq = 2
+  else if (workoutFrequencyStr === '3-4') freq = 4
+  else if (workoutFrequencyStr === '5+') freq = 5
+  else freq = 0
+
+  // Weekly burn -> Daily average
+  const weeklyBurn = calPerSession * freq
+  return Math.round(weeklyBurn / 7)
 }
 
 function getRandomFood(categoryList: string[], fallbackId: string, allowedIds?: string[]): FoodItem {
@@ -206,13 +226,22 @@ export async function generateDietForUser(userId: string): Promise<any> {
   const height = prefs?.height || user.height || 165
   const age = prefs?.age || user.age || 30
   const gender = prefs?.gender || user.gender || 'female'
-  const activity = 'moderate'
+  const workoutFreq = prefs?.workout_frequency || '1-2'
+  const workoutDur = prefs?.workout_duration || '15'
+  
   const foodPrefs = prefs?.food_preferences || {}
   const bottleSize = prefs?.water_bottle_size_ml || 500
 
   const tmb = calculateTMB(weight, height, age, gender)
-  const tdee = calculateTDEE(tmb, activity)
-  const targetCalories = Math.max(1200, tdee - 500)
+  const dailyExerciseBurn = calculateDailyExerciseBurn(workoutDur, workoutFreq)
+  
+  // TDEE is effectively TMB + Exercise (plus maybe slight NEAT bump, but keeping simple as requested)
+  // Request: "O gasto calórico semanal será somado ao valor da TMB." -> Interpreted as daily avg
+  // Request: "Subtrair 500 calorias para o déficit calórico."
+  
+  const totalDailyExpenditure = tmb + dailyExerciseBurn
+  const targetCalories = Math.max(1200, totalDailyExpenditure - 500)
+  
   const waterTargetMl = Math.round(weight * 35)
   const bottlesCount = Math.ceil(waterTargetMl / bottleSize)
 
@@ -232,14 +261,14 @@ export async function generateDietForUser(userId: string): Promise<any> {
           origin: 'ai_generated', 
           is_active: true, 
           macros: { 
-              protein: Math.round(targetCalories * 0.3 / 4), 
-              carbs: Math.round(targetCalories * 0.4 / 4), 
-              fat: Math.round(targetCalories * 0.3 / 9), 
+              protein: Math.round(targetCalories * 0.3 / 4), // 30% Protein
+              carbs: Math.round(targetCalories * 0.4 / 4),   // 40% Carbs
+              fat: Math.round(targetCalories * 0.3 / 9),     // 30% Fat
               water_target_ml: waterTargetMl, 
               water_bottle_size: bottleSize, 
               bottles_count: bottlesCount, 
               tmb, 
-              tdee 
+              tdee: totalDailyExpenditure 
           } 
       }).select().single()
 
