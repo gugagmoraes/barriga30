@@ -4,9 +4,10 @@ import WorkoutPlayer from '@/components/workout/WorkoutPlayer'
 import { getRegressionWorkout } from '@/services/workout.service'
 
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
-export default async function WorkoutPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
+export default async function WorkoutPage({ params }: { params: Promise<{ workoutId: string }> }) {
+  const { workoutId: id } = await params
   
   // Handle Placeholder
   if (id === 'placeholder-config') {
