@@ -28,7 +28,16 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
   const { data: workout } = await supabase.from('workouts').select('*').eq('id', id).single()
 
   if (!workout) {
-    notFound()
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-8rem)] text-center px-4">
+        <h1 className="text-2xl font-bold text-gray-800 mb-2">Treino não encontrado</h1>
+        <p className="text-gray-600 mb-6">Não conseguimos localizar o treino solicitado.</p>
+        <p className="text-xs text-gray-400 font-mono mb-8">ID: {id}</p>
+        <a href="/treinos" className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition">
+          Voltar para Treinos
+        </a>
+      </div>
+    )
   }
 
   const regression = await getRegressionWorkout(workout)
