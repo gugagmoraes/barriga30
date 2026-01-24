@@ -17,6 +17,7 @@ interface Workout {
     id: string
     name: string
     video_url?: string | null
+    link_youtube?: string | null // Fallback field
     exercises?: Exercise[] 
 }
 
@@ -29,14 +30,19 @@ export default function WorkoutPlayer({ workout, regression }: { workout: Workou
     const router = useRouter()
     
     // Video Embed Logic
-    let embedUrl = null
-    if (workout.video_url) {
-        if (workout.video_url.includes('youtube.com') && workout.video_url.includes('v=')) {
-             const videoId = workout.video_url.split('v=')[1]
+    let embedUrl: string | null = null
+    const rawUrl = workout.video_url || workout.link_youtube || null
+
+    if (rawUrl) {
+        if (rawUrl.includes('youtube.com') && rawUrl.includes('v=')) {
+             const videoId = rawUrl.split('v=')[1]?.split('&')[0]
+             embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=${isPlaying ? 1 : 0}&rel=0`
+        } else if (rawUrl.includes('youtu.be/')) {
+             const videoId = rawUrl.split('youtu.be/')[1]?.split('?')[0]
              embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=${isPlaying ? 1 : 0}&rel=0`
         } else {
              // Direct embed url (Bunny.net or other)
-             embedUrl = workout.video_url
+             embedUrl = rawUrl
              if (isPlaying && embedUrl.includes('mediadelivery.net')) {
                  const separator = embedUrl.includes('?') ? '&' : '?'
                  embedUrl = `${embedUrl}${separator}autoplay=true`
@@ -115,7 +121,9 @@ export default function WorkoutPlayer({ workout, regression }: { workout: Workou
                                 <p>ID: {workout.id}</p>
                                 <p>Name: {workout.name}</p>
                                 <p>Has Video URL: {workout.video_url ? 'Yes' : 'No'}</p>
-                                {workout.video_url && <p className="break-all">Raw URL: {workout.video_url}</p>}
+                                <p>Has YouTube Link: {workout.link_youtube ? 'Yes' : 'No'}</p>
+                                {rawUrl && <p className="break-all">Raw URL: {rawUrl}</p>}
+                                {embedUrl && <p className="break-all">Embed URL: {embedUrl}</p>}
                             </div>
                         </div>
                     </div>
