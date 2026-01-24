@@ -10,6 +10,9 @@ import { saveQuizSubmission } from '../actions/quiz'
 import { PlanType } from '@/types/database.types'
 
 export async function login(prevState: any, formData: FormData) {
+  console.log('[Login Action] Started')
+  console.log('Supabase URL defined:', !!process.env.NEXT_PUBLIC_SUPABASE_URL)
+  
   const data = Object.fromEntries(formData.entries())
   
   // 1. Validar dados com Zod
@@ -23,17 +26,19 @@ export async function login(prevState: any, formData: FormData) {
 
   const supabase = await createClient()
 
-  const { error, data: authData } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  })
+  try {
+    const { error, data: authData } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
 
-  if (error) {
-    return { error: error.message }
-  }
+    if (error) {
+      console.error('Supabase Auth Error:', error)
+      return { error: error.message }
+    }
 
-  // GAMIFICATION: Log Daily Login
-  if (authData.user) {
+    // GAMIFICATION: Log Daily Login
+    if (authData.user) {
     const today = new Date().toISOString().split('T')[0]
     await logActivity({
         userId: authData.user.id,
@@ -45,6 +50,11 @@ export async function login(prevState: any, formData: FormData) {
 
   revalidatePath('/', 'layout')
   redirect('/dashboard')
+  } catch (e: any) {
+    if (e.message === 'NEXT_REDIRECT') throw e
+    console.error('Login Exception:', e)
+    return { error: 'Erro de conexão: Verifique se o Supabase está configurado corretamente.' }
+  }
 }
 
 export async function signup(prevState: any, formData: FormData) {
