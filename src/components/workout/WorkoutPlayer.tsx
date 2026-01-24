@@ -88,16 +88,20 @@ export default function WorkoutPlayer({ workout, regression }: { workout: Workou
             {/* Video Area */}
             <div className="flex-1 bg-gray-900 flex items-center justify-center relative">
                 {embedUrl ? (
-                    <iframe 
-                        width="100%" 
-                        height="100%" 
-                        src={embedUrl} 
-                        title={workout.name} 
-                        frameBorder="0" 
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                        allowFullScreen
-                        className="w-full h-full"
-                    ></iframe>
+                    <div className="w-full h-full relative">
+                        <iframe 
+                            src={embedUrl}
+                            title={workout.name} 
+                            className="w-full h-full absolute inset-0"
+                            style={{ border: 'none' }}
+                            allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;" 
+                            allowFullScreen={true}
+                        ></iframe>
+                        {/* Debug Info (Hidden in Production usually, but helpful now) */}
+                        {/* <div className="absolute top-0 left-0 bg-black/50 text-xs text-white p-1 z-50">
+                            URL: {embedUrl}
+                        </div> */}
+                    </div>
                 ) : (
                     <div className="text-center px-4 space-y-6">
                         <h2 className="text-xl md:text-2xl font-bold text-white">{workout.name}</h2>
@@ -106,9 +110,13 @@ export default function WorkoutPlayer({ workout, regression }: { workout: Workou
                                 Este treino é um vídeo guiado. 
                                 <br/>O link do vídeo será inserido em breve.
                             </p>
-                            <p className="text-sm text-gray-500 italic">
-                                (Placeholder Técnico: Aguardando URL do Vídeo)
-                            </p>
+                            <div className="text-xs text-gray-500 font-mono bg-black/30 p-2 rounded text-left overflow-auto max-h-24">
+                                <p>Debug Info:</p>
+                                <p>ID: {workout.id}</p>
+                                <p>Name: {workout.name}</p>
+                                <p>Has Video URL: {workout.video_url ? 'Yes' : 'No'}</p>
+                                {workout.video_url && <p className="break-all">Raw URL: {workout.video_url}</p>}
+                            </div>
                         </div>
                     </div>
                 )}
