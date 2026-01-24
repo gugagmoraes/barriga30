@@ -29,8 +29,20 @@ export default function WorkoutPlayer({ workout, regression }: { workout: Workou
     const router = useRouter()
     
     // Video Embed Logic
-    const videoId = workout.video_url ? workout.video_url.split('v=')[1] : null
-    const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=${isPlaying ? 1 : 0}&rel=0` : null
+    let embedUrl = null
+    if (workout.video_url) {
+        if (workout.video_url.includes('youtube.com') && workout.video_url.includes('v=')) {
+             const videoId = workout.video_url.split('v=')[1]
+             embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=${isPlaying ? 1 : 0}&rel=0`
+        } else {
+             // Direct embed url (Bunny.net or other)
+             embedUrl = workout.video_url
+             if (isPlaying && embedUrl.includes('mediadelivery.net')) {
+                 const separator = embedUrl.includes('?') ? '&' : '?'
+                 embedUrl = `${embedUrl}${separator}autoplay=true`
+             }
+        }
+    }
 
     const handleCompletion = async () => {
         try {
@@ -95,7 +107,7 @@ export default function WorkoutPlayer({ workout, regression }: { workout: Workou
                                 <br/>O link do vídeo será inserido em breve.
                             </p>
                             <p className="text-sm text-gray-500 italic">
-                                (Placeholder Técnico: Aguardando URL do YouTube)
+                                (Placeholder Técnico: Aguardando URL do Vídeo)
                             </p>
                         </div>
                     </div>
