@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 import WorkoutPlayer from '@/components/workout/WorkoutPlayer'
 import { getRegressionWorkout } from '@/services/workout.service'
 
+export const dynamic = 'force-dynamic'
+
 export default async function WorkoutPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   
