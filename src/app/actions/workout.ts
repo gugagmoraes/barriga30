@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { checkAndUnlockBadges } from '@/services/badges'
 import { revalidatePath } from 'next/cache'
 
@@ -29,20 +30,54 @@ export async function completeWorkout(workoutId: string) {
       if (workoutId === '3') { level = 'beginner'; type = 'C'; }
   }
 
+  const today = new Date().toISOString().split('T')[0]
+
+  let ok = false
+  let reason: string | undefined
+  let xpEarned = 50
+
   const { data: rpcResult, error: rpcError } = await supabase.rpc('complete_workout', { p_workout_id: workoutId })
+  ok = !!(rpcResult && (rpcResult as any).success)
+  if (!ok) {
+    reason = rpcError ? 'failed_to_complete' : (rpcResult as any)?.reason
 
-  // 2. Check for Badges
-  const newBadges = await checkAndUnlockBadges(user.id)
+    const admin = createAdminClient()
+    if (admin && reason !== 'unauthorized') {
+      const { data: existing } = await admin
+        .from('user_activity_log')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('activity_type', 'workout_completed')
+        .eq('reference_id', workoutId)
+        .contains('metadata', { date: today })
+        .limit(1)
 
-  if (rpcError) {
-    console.error('Failed to complete workout', rpcError)
+      if (existing && existing.length > 0) {
+        ok = false
+        reason = 'duplicate'
+      } else {
+        const { error: insertError } = await admin.from('user_activity_log').insert({
+          user_id: user.id,
+          activity_type: 'workout_completed',
+          reference_id: workoutId,
+          xp_earned: 50,
+          metadata: { workoutId, date: today, level, type },
+        })
+
+        if (!insertError) {
+          ok = true
+          reason = undefined
+        }
+      }
+    }
+  } else {
+    xpEarned = (rpcResult as any).xp ?? 50
   }
 
+  const newBadges = await checkAndUnlockBadges(user.id)
   revalidatePath('/dashboard')
 
-  const ok = !!(rpcResult && (rpcResult as any).success)
   if (!ok) {
-    const reason = rpcError ? 'failed_to_complete' : (rpcResult as any)?.reason
     if (reason === 'duplicate') {
       return { success: false, error: 'duplicate', xpEarned: 0, newBadges: [] as string[] }
     }
@@ -52,5 +87,5 @@ export async function completeWorkout(workoutId: string) {
     return { success: false, error: 'failed_to_complete', xpEarned: 0, newBadges: [] as string[] }
   }
 
-  return { success: true, xpEarned: (rpcResult as any).xp ?? 50, newBadges }
+  return { success: true, xpEarned, newBadges }
 }
