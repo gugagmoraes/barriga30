@@ -221,25 +221,25 @@ export default function WorkoutPlayer({ workout, regression }: { workout: Workou
 
             {/* Controls */}
             <div className="h-24 bg-gray-800 flex items-center justify-between px-6 md:px-12 z-20 border-t border-gray-700">
-                 <div className="text-sm text-gray-400">
-                    {isCompleted ? 'Treino Concluído ✅' : !canComplete ? (secondsRemaining !== null ? `Disponível no último minuto (${secondsRemaining}s restantes)` : 'Disponível no último minuto do vídeo') : 'Assista ao vídeo e siga os movimentos'}
-                 </div>
-                 
-                 <Button 
-                    size="lg" 
-                    className={`font-bold px-8 ${isCompleted ? 'bg-green-600 hover:bg-green-700' : 'bg-primary hover:bg-primary/90'}`}
-                    onClick={handleCompletion}
-                    disabled={isCompleted || !canComplete}
-                 >
-                    {isCompleted ? (
-                        <>
-                            <CheckCircle className="w-5 h-5 mr-2" />
-                            Concluído
-                        </>
-                    ) : (
-                        'Marcar como Concluído'
-                    )}
-                 </Button>
+                <div className="flex-1" />
+
+                {(isCompleted || canComplete) && (
+                    <Button 
+                        size="lg" 
+                        className={`font-bold px-8 ${isCompleted ? 'bg-green-600 hover:bg-green-700' : 'bg-primary hover:bg-primary/90'}`}
+                        onClick={handleCompletion}
+                        disabled={isCompleted || !canComplete}
+                    >
+                        {isCompleted ? (
+                            <>
+                                <CheckCircle className="w-5 h-5 mr-2" />
+                                Concluído
+                            </>
+                        ) : (
+                            'Marcar como Concluído'
+                        )}
+                    </Button>
+                )}
             </div>
         </div>
     )

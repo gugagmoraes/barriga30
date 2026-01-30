@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin'
 
 export type ActivityType = 'workout_completed' | 'diet_checked' | 'water_logged' | 'daily_login';
 
@@ -12,8 +11,7 @@ interface LogActivityParams {
 }
 
 export async function logActivity({ userId, type, referenceId, xp, metadata }: LogActivityParams) {
-  const supabase =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ? createAdminClient() : await createClient()
+  const supabase = await createClient();
 
   try {
     const { error } = await supabase
