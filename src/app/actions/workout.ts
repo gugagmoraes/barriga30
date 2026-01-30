@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { logActivity } from '@/services/gamification'
 import { checkAndUnlockBadges } from '@/services/badges'
 import { revalidatePath } from 'next/cache'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function completeWorkout(workoutId: string) {
   const supabase = await createClient()
@@ -32,12 +33,24 @@ export async function completeWorkout(workoutId: string) {
 
   // 1. Log Activity
   const today = new Date().toISOString().split('T')[0]
-  const referenceId = workoutId
+  const admin = createAdminClient()
+
+  const { data: existing } = await admin
+    .from('user_activity_log')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('activity_type', 'workout_completed')
+    .eq('metadata->>workoutId', workoutId)
+    .eq('metadata->>date', today)
+    .limit(1)
+
+  if (existing && existing.length > 0) {
+    return { success: false, error: 'duplicate', xpEarned: 0, newBadges: [] as string[] }
+  }
 
   const result = await logActivity({
     userId: user.id,
     type: 'workout_completed',
-    referenceId: referenceId,
     xp: 50,
     metadata: { 
         workoutId, 
