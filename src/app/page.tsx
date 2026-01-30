@@ -117,14 +117,15 @@ export default function LandingPage() {
 
                 {/* Video Embed */}
                 <div className="aspect-video w-full bg-black rounded-lg md:rounded-xl overflow-hidden shadow-2xl">
-                  <iframe 
-                    className="w-full h-full"
-                    src="https://www.youtube.com/embed/KKRUAJ5aNbM?rel=0&controls=1&showinfo=0&modestbranding=1"
-                    title="VSL Barriga 30"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  ></iframe>
+                  <div style={{ position: 'relative', paddingTop: '56.25%' }}>
+                    <iframe 
+                      src="https://player.mediadelivery.net/embed/586050/dbe465da-c11b-41d0-9b92-15ea856a65a3?autoplay=false&loop=false&muted=false&preload=false&responsive=true" 
+                      loading="lazy" 
+                      style={{ border: 0, position: 'absolute', top: 0, height: '100%', width: '100%' }} 
+                      allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;" 
+                      allowFullScreen={true}
+                    ></iframe>
+                  </div>
                 </div>
                 
                 {/* Benefits List inside VSL box for context */}
