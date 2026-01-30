@@ -2,6 +2,22 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { PlayCircle, Clock, BarChart } from 'lucide-react'
 
+function normalizeBunnyEmbedUrl(url: unknown) {
+  if (typeof url !== 'string') return null
+  const trimmed = url.trim()
+  if (!trimmed.startsWith('https://')) return trimmed
+
+  try {
+    const parsed = new URL(trimmed)
+    if (!parsed.hostname.endsWith('mediadelivery.net')) return trimmed
+    if (!parsed.pathname.startsWith('/embed/')) return trimmed
+    parsed.searchParams.set('autoplay', 'false')
+    return parsed.toString()
+  } catch {
+    return trimmed
+  }
+}
+
 function isValidFullEmbedUrl(url: unknown) {
   if (typeof url !== 'string') return false
   const trimmed = url.trim()
@@ -37,7 +53,7 @@ export default async function WorkoutsPage() {
             <div className="bg-gray-100 relative">
               {isValidFullEmbedUrl(workout.video_url) ? (
                 <iframe
-                  src={workout.video_url}
+                  src={normalizeBunnyEmbedUrl(workout.video_url) || workout.video_url}
                   width="100%"
                   height="315px"
                   style={{ border: 0, borderRadius: 12 }}

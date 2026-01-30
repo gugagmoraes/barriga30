@@ -43,10 +43,13 @@ export default function WorkoutPlayer({ workout, regression }: { workout: Workou
         } else {
              // Direct embed url (Bunny.net or other)
              embedUrl = rawUrl
-             if (isPlaying && embedUrl.includes('mediadelivery.net')) {
-                 const separator = embedUrl.includes('?') ? '&' : '?'
-                 embedUrl = `${embedUrl}${separator}autoplay=true`
-             }
+             try {
+                 const parsed = new URL(embedUrl)
+                 if (parsed.hostname.endsWith('mediadelivery.net') && parsed.pathname.startsWith('/embed/')) {
+                     parsed.searchParams.set('autoplay', isPlaying ? 'true' : 'false')
+                     embedUrl = parsed.toString()
+                 }
+             } catch {}
         }
     }
 
