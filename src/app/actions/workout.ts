@@ -1,7 +1,6 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { logActivity } from '@/services/gamification'
 import { checkAndUnlockBadges } from '@/services/badges'
 import { revalidatePath } from 'next/cache'
 
@@ -30,36 +29,28 @@ export async function completeWorkout(workoutId: string) {
       if (workoutId === '3') { level = 'beginner'; type = 'C'; }
   }
 
-  // 1. Log Activity
-  const today = new Date().toISOString().split('T')[0]
-
-  const result = await logActivity({
-    userId: user.id,
-    type: 'workout_completed',
-    referenceId: workoutId,
-    xp: 50,
-    metadata: { 
-        workoutId, 
-        date: today,
-        level, // Crucial for progression counting
-        type   // Crucial for progression counting
-    }
-  })
+  const { data: rpcResult, error: rpcError } = await supabase.rpc('complete_workout', { p_workout_id: workoutId })
 
   // 2. Check for Badges
   const newBadges = await checkAndUnlockBadges(user.id)
 
-  if (!result.success && result.reason !== 'duplicate') {
-    console.error('Failed to log workout completion', result.error)
+  if (rpcError) {
+    console.error('Failed to complete workout', rpcError)
   }
 
   revalidatePath('/dashboard')
-  if (!result.success) {
-    if (result.reason === 'duplicate') {
+
+  const ok = !!(rpcResult && (rpcResult as any).success)
+  if (!ok) {
+    const reason = rpcError ? 'failed_to_complete' : (rpcResult as any)?.reason
+    if (reason === 'duplicate') {
       return { success: false, error: 'duplicate', xpEarned: 0, newBadges: [] as string[] }
     }
-    return { success: false, error: 'failed_to_log_activity', xpEarned: 0, newBadges: [] as string[] }
+    if (reason === 'unauthorized') {
+      return { success: false, error: 'unauthorized', xpEarned: 0, newBadges: [] as string[] }
+    }
+    return { success: false, error: 'failed_to_complete', xpEarned: 0, newBadges: [] as string[] }
   }
 
-  return { success: true, xpEarned: 50, newBadges }
+  return { success: true, xpEarned: (rpcResult as any).xp ?? 50, newBadges }
 }
