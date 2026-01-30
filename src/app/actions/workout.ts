@@ -32,7 +32,7 @@ export async function completeWorkout(workoutId: string) {
 
   // 1. Log Activity
   const today = new Date().toISOString().split('T')[0]
-  const referenceId = `${workoutId}_${today}`
+  const referenceId = workoutId
 
   const result = await logActivity({
     userId: user.id,
@@ -55,5 +55,12 @@ export async function completeWorkout(workoutId: string) {
   }
 
   revalidatePath('/dashboard')
+  if (!result.success) {
+    if (result.reason === 'duplicate') {
+      return { success: false, error: 'duplicate', xpEarned: 0, newBadges: [] as string[] }
+    }
+    return { success: false, error: 'failed_to_log_activity', xpEarned: 0, newBadges: [] as string[] }
+  }
+
   return { success: true, xpEarned: 50, newBadges }
 }

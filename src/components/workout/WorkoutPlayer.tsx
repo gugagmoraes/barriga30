@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Play, Pause, SkipForward, RotateCcw, CheckCircle, ArrowDownCircle } from 'lucide-react'
 import { completeWorkout } from '@/app/actions/workout'
 import { useRouter } from 'next/navigation'
 import { WorkoutSuccessModal } from './WorkoutSuccessModal'
+import Script from 'next/script'
 
 // Define types
 interface Exercise {
@@ -18,6 +19,7 @@ interface Workout {
     name: string
     video_url?: string | null
     link_youtube?: string | null // Fallback field
+    duration_minutes?: number | null
     exercises?: Exercise[] 
 }
 
@@ -27,42 +29,118 @@ export default function WorkoutPlayer({ workout, regression }: { workout: Workou
     const [showSuccessModal, setShowSuccessModal] = useState(false)
     const [earnedXP, setEarnedXP] = useState(0)
     const [newBadges, setNewBadges] = useState<string[]>([])
+    const [playerJsReady, setPlayerJsReady] = useState(false)
+    const [canComplete, setCanComplete] = useState(false)
+    const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null)
+    const iframeRef = useRef<HTMLIFrameElement | null>(null)
     const router = useRouter()
     
-    // Video Embed Logic
-    let embedUrl: string | null = null
     const rawUrl = workout.video_url || workout.link_youtube || null
+    const embedUrl = useMemo(() => {
+        if (!rawUrl) return null
 
-    if (rawUrl) {
         if (rawUrl.includes('youtube.com') && rawUrl.includes('v=')) {
              const videoId = rawUrl.split('v=')[1]?.split('&')[0]
-             embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=${isPlaying ? 1 : 0}&rel=0`
-        } else if (rawUrl.includes('youtu.be/')) {
-             const videoId = rawUrl.split('youtu.be/')[1]?.split('?')[0]
-             embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=${isPlaying ? 1 : 0}&rel=0`
-        } else {
-             // Direct embed url (Bunny.net or other)
-             embedUrl = rawUrl
-             try {
-                 const parsed = new URL(embedUrl)
-                 if (parsed.hostname.endsWith('mediadelivery.net') && parsed.pathname.startsWith('/embed/')) {
-                     parsed.searchParams.set('autoplay', isPlaying ? 'true' : 'false')
-                     embedUrl = parsed.toString()
-                 }
-             } catch {}
+             return `https://www.youtube.com/embed/${videoId}?autoplay=${isPlaying ? 1 : 0}&rel=0`
         }
-    }
+
+        if (rawUrl.includes('youtu.be/')) {
+             const videoId = rawUrl.split('youtu.be/')[1]?.split('?')[0]
+             return `https://www.youtube.com/embed/${videoId}?autoplay=${isPlaying ? 1 : 0}&rel=0`
+        }
+
+        try {
+            const parsed = new URL(rawUrl)
+            if (parsed.hostname.endsWith('mediadelivery.net') && parsed.pathname.startsWith('/embed/')) {
+                parsed.searchParams.set('autoplay', isPlaying ? 'true' : 'false')
+                parsed.searchParams.set('v', workout.id)
+                return parsed.toString()
+            }
+        } catch {}
+
+        return rawUrl
+    }, [isPlaying, rawUrl, workout.id])
+
+    const isBunnyEmbed = useMemo(() => {
+        if (!embedUrl) return false
+        try {
+            const parsed = new URL(embedUrl)
+            return parsed.hostname.endsWith('mediadelivery.net') && parsed.pathname.startsWith('/embed/')
+        } catch {
+            return false
+        }
+    }, [embedUrl])
+
+    useEffect(() => {
+        if (!embedUrl) {
+            setCanComplete(false)
+            setSecondsRemaining(null)
+            return
+        }
+
+        if (!isBunnyEmbed) {
+            setCanComplete(true)
+            setSecondsRemaining(null)
+            return
+        }
+
+        setCanComplete(false)
+        setSecondsRemaining(null)
+        if (!playerJsReady) return
+        if (!iframeRef.current) return
+
+        const w = window as any
+        const playerjs = w?.playerjs
+        if (!playerjs?.Player) return
+
+        const player = new playerjs.Player(iframeRef.current)
+
+        const handleTimeupdate = (payload: any) => {
+            let data = payload
+            if (typeof payload === 'string') {
+                try { data = JSON.parse(payload) } catch { return }
+            }
+            const seconds = typeof data?.seconds === 'number' ? data.seconds : NaN
+            const duration = typeof data?.duration === 'number' ? data.duration : NaN
+            if (!Number.isFinite(seconds) || !Number.isFinite(duration) || duration <= 0) return
+            const remaining = Math.max(0, Math.ceil(duration - seconds))
+            setSecondsRemaining(remaining)
+            setCanComplete(remaining <= 60)
+        }
+
+        const handleEnded = () => {
+            setSecondsRemaining(0)
+            setCanComplete(true)
+        }
+
+        player.on('ready', () => {
+            player.on('timeupdate', handleTimeupdate)
+            player.on('ended', handleEnded)
+        })
+
+        return () => {
+            try { player.off('timeupdate', handleTimeupdate) } catch {}
+            try { player.off('ended', handleEnded) } catch {}
+            try { player.off('ready') } catch {}
+        }
+    }, [embedUrl, isBunnyEmbed, playerJsReady])
 
     const handleCompletion = async () => {
         try {
+            if (!canComplete || isCompleted) return
             const result = await completeWorkout(workout.id)
             if (result.success) {
                 setEarnedXP(result.xpEarned || 0)
                 setNewBadges(result.newBadges || [])
                 setShowSuccessModal(true)
                 setIsCompleted(true)
+                router.refresh()
             } else {
-                 alert('Treino concluído, mas houve um erro ao salvar o progresso.')
+                 if ((result as any).error === 'duplicate') {
+                    alert('Você já concluiu este treino hoje.')
+                 } else {
+                    alert('Não foi possível salvar seu progresso agora. Tente novamente.')
+                 }
             }
         } catch (error) {
             console.error('Failed to log completion', error)
@@ -98,9 +176,17 @@ export default function WorkoutPlayer({ workout, regression }: { workout: Workou
             <div className="flex-1 bg-gray-900 flex items-center justify-center relative">
                 {embedUrl ? (
                     <div className="w-full h-full relative">
+                        {isBunnyEmbed && (
+                            <Script
+                                src="https://assets.mediadelivery.net/playerjs/playerjs-latest.min.js"
+                                strategy="afterInteractive"
+                                onLoad={() => setPlayerJsReady(true)}
+                            />
+                        )}
                         <iframe 
                             src={embedUrl}
                             title={workout.name} 
+                            ref={iframeRef}
                             className="w-full h-full absolute inset-0"
                             style={{ border: 'none' }}
                             allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;" 
@@ -136,14 +222,14 @@ export default function WorkoutPlayer({ workout, regression }: { workout: Workou
             {/* Controls */}
             <div className="h-24 bg-gray-800 flex items-center justify-between px-6 md:px-12 z-20 border-t border-gray-700">
                  <div className="text-sm text-gray-400">
-                    {isCompleted ? 'Treino Concluído ✅' : 'Assista ao vídeo e siga os movimentos'}
+                    {isCompleted ? 'Treino Concluído ✅' : !canComplete ? (secondsRemaining !== null ? `Disponível no último minuto (${secondsRemaining}s restantes)` : 'Disponível no último minuto do vídeo') : 'Assista ao vídeo e siga os movimentos'}
                  </div>
                  
                  <Button 
                     size="lg" 
                     className={`font-bold px-8 ${isCompleted ? 'bg-green-600 hover:bg-green-700' : 'bg-primary hover:bg-primary/90'}`}
                     onClick={handleCompletion}
-                    disabled={isCompleted}
+                    disabled={isCompleted || !canComplete}
                  >
                     {isCompleted ? (
                         <>
