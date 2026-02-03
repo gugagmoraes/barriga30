@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { generateDietForUser } from '@/services/diet.service'
 import { revalidatePath } from 'next/cache'
 
@@ -68,14 +69,25 @@ export async function saveDietPreferences(formData: FormData) {
         }
 
         // Update User Profile basics as well to keep in sync
-        const { error: userError } = await supabase.from('users').update({
+        // CRITICAL FIX: Use Service Role (Admin) to bypass RLS on users table update
+        const supabaseAdmin = createAdminClient()
+        if (!supabaseAdmin) {
+            throw new Error('Supabase Admin Client not configured (missing env keys)')
+        }
+
+        const { error: userError } = await supabaseAdmin.from('users').update({
             weight: preferences.weight,
             height: preferences.height,
             age: preferences.age,
             gender: preferences.gender
         }).eq('id', user.id)
 
-        if (userError) console.error('[saveDietPreferences] User update error:', userError)
+        if (userError) {
+            console.error('[saveDietPreferences] User update error (Admin):', userError)
+            throw new Error(`Failed to update user profile: ${userError.message}`)
+        } else {
+            console.log('[saveDietPreferences] User profile updated successfully via Admin')
+        }
 
         // Generate Diet Immediately
         console.log('[saveDietPreferences] Triggering diet generation...')
@@ -85,9 +97,9 @@ export async function saveDietPreferences(formData: FormData) {
         revalidatePath('/dieta')
         revalidatePath('/lista-compras')
         return { success: true }
-    } catch (e) {
+    } catch (e: any) {
         console.error('[saveDietPreferences] Failed to save preferences:', e)
-        return { success: false, error: String(e) }
+        return { success: false, error: e.message || String(e) }
     }
 }
 
