@@ -51,13 +51,21 @@ export async function saveDietPreferences(formData: FormData) {
             throw new Error('Supabase Admin Client not configured (missing env keys)')
         }
 
+        const userEmail = user.email ?? null
+        const meta = (user.user_metadata || {}) as any
+        const userName =
+            meta.full_name ||
+            meta.name ||
+            (typeof userEmail === 'string' ? userEmail.split('@')[0] : null) ||
+            'Usuário'
+
         const { error: ensureUserError } = await supabaseAdmin
             .from('users')
             .upsert(
                 {
                     id: user.id,
-                    email: user.email ?? null,
-                    name: (user.user_metadata as any)?.name ?? null,
+                    email: userEmail,
+                    name: userName,
                 } as any,
                 { onConflict: 'id' }
             )
