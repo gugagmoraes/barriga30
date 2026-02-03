@@ -46,8 +46,28 @@ export async function saveDietPreferences(formData: FormData) {
 
         console.log('[saveDietPreferences] Starting preference save for user:', user.id)
 
+        const supabaseAdmin = createAdminClient()
+        if (!supabaseAdmin) {
+            throw new Error('Supabase Admin Client not configured (missing env keys)')
+        }
+
+        const { error: ensureUserError } = await supabaseAdmin
+            .from('users')
+            .upsert(
+                {
+                    id: user.id,
+                    email: user.email ?? null,
+                    name: (user.user_metadata as any)?.name ?? null,
+                } as any,
+                { onConflict: 'id' }
+            )
+
+        if (ensureUserError) {
+            throw new Error(`Failed to ensure public.users row: ${ensureUserError.message}`)
+        }
+
         // Archive old active preferences
-        const { error: archiveError } = await supabase
+        const { error: archiveError } = await supabaseAdmin
             .from('diet_preferences')
             .update({ is_active: false })
             .eq('user_id', user.id)
@@ -56,7 +76,7 @@ export async function saveDietPreferences(formData: FormData) {
         if (archiveError) console.error('[saveDietPreferences] Archive error:', archiveError)
 
         // Insert new preferences (active by default)
-        const { error } = await supabase
+        const { error } = await supabaseAdmin
             .from('diet_preferences')
             .insert({
                 ...preferences,
@@ -69,12 +89,6 @@ export async function saveDietPreferences(formData: FormData) {
         }
 
         // Update User Profile basics as well to keep in sync
-        // CRITICAL FIX: Use Service Role (Admin) to bypass RLS on users table update
-        const supabaseAdmin = createAdminClient()
-        if (!supabaseAdmin) {
-            throw new Error('Supabase Admin Client not configured (missing env keys)')
-        }
-
         const { error: userError } = await supabaseAdmin.from('users').update({
             weight: preferences.weight,
             height: preferences.height,
