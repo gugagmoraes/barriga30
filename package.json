@@ -11,12 +11,12 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-avatar": "^1.1.11",
-    "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-checkbox": "^1.0.6",
-    "@radix-ui/react-radio-group": "^1.1.6",
-    "@radix-ui/react-select": "^2.1.2",
+    "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-progress": "^1.1.8",
+    "@radix-ui/react-radio-group": "^1.1.6",
+    "@radix-ui/react-select": "^2.1.2",
     "@radix-ui/react-tabs": "^1.1.13",
     "@stripe/stripe-js": "^8.6.0",
     "@supabase/ssr": "^0.8.0",
@@ -44,7 +44,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
-    "supabase": "^2.70.5",
+    "supabase": "^2.75.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
