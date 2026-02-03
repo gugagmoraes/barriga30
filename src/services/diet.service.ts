@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { PlanType } from '@/types/database.types'
 import { startOfMonth } from 'date-fns'
 import { getFoodById, FoodItem } from '@/lib/food-db'
+import { geminiModel } from '@/lib/gemini'
 
 const ACTIVITY_MULTIPLIERS: Record<string, number> = {
   sedentary: 1.2,
@@ -9,6 +10,72 @@ const ACTIVITY_MULTIPLIERS: Record<string, number> = {
   moderate: 1.55,
   active: 1.725,
   very_active: 1.9
+}
+
+async function generateDietWithAI(userProfile: any, targets: any): Promise<any> {
+  const prompt = `
+    Atue como um nutricionista especialista do método "Barriga 30". Crie um plano alimentar diário personalizado.
+    
+    PERFIL DO PACIENTE:
+    - Gênero: ${userProfile.gender}
+    - Idade: ${userProfile.age} anos
+    - Peso: ${userProfile.weight} kg
+    - Altura: ${userProfile.height} cm
+    - Objetivo: Emagrecimento / Definição
+    
+    METAS NUTRICIONAIS DIÁRIAS:
+    - Calorias Totais: ${targets.calories} kcal (Tente ficar próximo, margem +/- 50kcal)
+    - Proteínas: ~${targets.macros.protein}g
+    - Carboidratos: ~${targets.macros.carbs}g
+    - Gorduras: ~${targets.macros.fat}g
+    
+    PREFERÊNCIAS E RESTRIÇÕES:
+    - Preferências: ${JSON.stringify(userProfile.foodPrefs)}
+    - Estrutura de Refeições: Café da Manhã, Almoço, Lanche da Tarde, Jantar.
+    
+    REGRAS DO MÉTODO BARRIGA 30:
+    1. Priorize comida de verdade (arroz, feijão, ovos, frango, frutas, legumes).
+    2. Café da manhã deve ser proteico.
+    3. Almoço e Jantar devem seguir o prato ideal: Proteína + Carboidrato + Vegetais.
+    4. Se houver arroz e feijão, a quantidade de feijão deve ser metade da de arroz.
+    5. Evite ultraprocessados.
+    
+    SAÍDA ESPERADA (JSON):
+    Retorne APENAS um JSON válido com a estrutura abaixo, sem markdown (```json ... ```) ou texto extra:
+    {
+      "meals": [
+        {
+          "name": "Café da Manhã",
+          "time": "08:00",
+          "items": [
+            { 
+              "name": "Nome do alimento", 
+              "quantity": "Quantidade descritiva (ex: 2 ovos, 100g)", 
+              "calories": 100, 
+              "protein": 10, 
+              "carbs": 5, 
+              "fat": 2, 
+              "category": "protein" 
+            }
+          ]
+        }
+        // ... repetir para Almoço, Lanche da Tarde, Jantar
+      ]
+    }
+    Use as categorias: 'protein', 'carb', 'fat', 'fruit', 'vegetable', 'drink'.
+  `;
+
+  try {
+    const result = await geminiModel.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    // Simple cleanup for markdown code blocks if the model adds them
+    const jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(jsonStr);
+  } catch (error) {
+    console.error("Erro na geração de dieta via IA:", error);
+    return null; // Return null to trigger fallback
+  }
 }
 
 function calculateTMB(weight: number, height: number, age: number, gender: string): number {
@@ -249,6 +316,71 @@ export async function generateDietForUser(userId: string): Promise<any> {
   await supabase.from('diet_snapshots').update({ is_active: false }).eq('user_id', userId)
 
   let finalSnapshot = null
+  
+  // Tenta gerar com IA primeiro
+  try {
+    console.log(`[DietGen] Starting AI generation for user ${userId}`);
+    const aiPlan = await generateDietWithAI(
+      { gender, age, weight, height, foodPrefs },
+      { calories: targetCalories, macros: { protein: Math.round(targetCalories * 0.3 / 4), carbs: Math.round(targetCalories * 0.4 / 4), fat: Math.round(targetCalories * 0.3 / 9), water_target_ml: waterTargetMl } }
+    );
+
+    if (aiPlan && aiPlan.meals && Array.isArray(aiPlan.meals)) {
+      // Persist AI Plan
+       const { data: snapshot, error: snapError } = await supabase.from('diet_snapshots').insert({ 
+          user_id: userId, 
+          daily_calories: targetCalories, 
+          name: `Plano AI (${targetCalories} kcal)`, 
+          origin: 'ai_generated', 
+          is_active: true, 
+          macros: { 
+              protein: Math.round(targetCalories * 0.3 / 4),
+              carbs: Math.round(targetCalories * 0.4 / 4),
+              fat: Math.round(targetCalories * 0.3 / 9),
+              water_target_ml: waterTargetMl, 
+              water_bottle_size: bottleSize, 
+              bottles_count: bottlesCount, 
+              tmb, 
+              tdee: totalDailyExpenditure 
+          } 
+      }).select().single()
+
+      if (snapshot && !snapError) {
+        let order = 1;
+        for (const meal of aiPlan.meals) {
+           const { data: mealData } = await supabase.from('snapshot_meals').insert({ 
+             diet_snapshot_id: snapshot.id, 
+             name: meal.name, 
+             order_index: order++, 
+             time_of_day: meal.time || '00:00' 
+           }).select().single();
+           
+           if (mealData && meal.items) {
+             for (const item of meal.items) {
+               await supabase.from('snapshot_items').insert({ 
+                 snapshot_meal_id: mealData.id, 
+                 name: item.name, 
+                 quantity: item.quantity, 
+                 calories: item.calories || 0, 
+                 category: item.category || 'other', 
+                 protein: item.protein || 0, 
+                 carbs: item.carbs || 0, 
+                 fat: item.fat || 0 
+               });
+             }
+           }
+        }
+        await persistShoppingLists(userId, snapshot);
+        await supabase.from('diet_regenerations').insert({ user_id: userId });
+        return snapshot; // Return early if AI succeeds
+      }
+    }
+  } catch (err) {
+    console.error("[DietGen] AI generation failed, falling back to algorithm", err);
+  }
+
+  // Fallback to existing algorithm if AI fails or returns invalid data
+  console.log("[DietGen] Using algorithmic generation fallback");
   const maxAttempts = 3
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
