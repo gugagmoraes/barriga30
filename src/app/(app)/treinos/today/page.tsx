@@ -10,6 +10,9 @@ export default async function TodayWorkoutPage() {
     
     if (!user) redirect('/login')
 
+    const { data: profile } = await supabase.from('users').select('plan_type').eq('id', user.id).single()
+    const planType = profile?.plan_type || 'basic'
+
     const workout = await getNextWorkoutForUser(user.id)
 
     if (!workout) {
@@ -44,7 +47,7 @@ export default async function TodayWorkoutPage() {
 
     return (
         <div className="h-[calc(100vh-8rem)] flex flex-col">
-            <WorkoutPlayer workout={workout} regression={regression} initialCompletedToday={completedToday} />
+            <WorkoutPlayer workout={workout} regression={regression} initialCompletedToday={completedToday} planType={planType} />
         </div>
     )
 }

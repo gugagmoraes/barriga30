@@ -26,11 +26,13 @@ interface Workout {
 export default function WorkoutPlayer({
     workout,
     regression,
-    initialCompletedToday
+    initialCompletedToday,
+    planType
 }: {
     workout: Workout
     regression?: Workout | null
     initialCompletedToday?: boolean
+    planType?: string
 }) {
     const [isPlaying, setIsPlaying] = useState(false)
     const [isCompleted, setIsCompleted] = useState(!!initialCompletedToday)
@@ -178,7 +180,17 @@ export default function WorkoutPlayer({
                         variant="secondary" 
                         size="sm" 
                         className="bg-white/90 hover:bg-white text-black text-xs font-semibold shadow-lg backdrop-blur-sm"
-                        onClick={() => router.push(`/treinos/${regression.id}`)}
+                        onClick={() => {
+                            if (planType === 'basic') {
+                                router.push('/upgrade')
+                                return
+                            }
+                            if (!regression?.id) {
+                                alert('Nenhuma versão mais leve disponível agora.')
+                                return
+                            }
+                            router.push(`/treinos/${regression.id}`)
+                        }}
                      >
                         <ArrowDownCircle className="w-4 h-4 mr-2 text-orange-500" />
                         Está difícil? Fazer versão mais leve

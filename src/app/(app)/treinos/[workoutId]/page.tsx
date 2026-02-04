@@ -28,6 +28,8 @@ export default async function WorkoutPage({ params }: { params: Promise<{ workou
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const { data: profile } = user ? await supabase.from('users').select('plan_type').eq('id', user.id).single() : { data: null }
+  const planType = profile?.plan_type || 'basic'
   
   const { data: workout } = await supabase.from('workouts').select('*').eq('id', id).single()
 
@@ -65,7 +67,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ workou
 
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col">
-       <WorkoutPlayer workout={workout} regression={regression} initialCompletedToday={completedToday} />
+       <WorkoutPlayer workout={workout} regression={regression} initialCompletedToday={completedToday} planType={planType} />
     </div>
   )
 }

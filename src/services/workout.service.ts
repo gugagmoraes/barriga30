@@ -67,7 +67,8 @@ export async function getRegressionWorkout(currentWorkout: any) {
         .select('*')
         .eq('level', targetLevel)
         .eq('type', currentWorkout.type)
-        .single()
+        .eq('is_active', true)
+        .maybeSingle()
         
-    return workout
+    return workout || null
 }
