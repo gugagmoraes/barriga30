@@ -11,11 +11,26 @@ import { getUserProgression } from '@/services/progression'
 import { getWeeklyRanking } from '@/services/ranking'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
+import { WaterTracker } from '@/components/dashboard/WaterTracker'
+import { MealTracker } from '@/components/dashboard/MealTracker'
+
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) return <div>Carregando...</div>
+
+  // Fetch Daily Tracking for Water/Meals
+  const today = new Date().toISOString().split('T')[0]
+  const { data: dailyTracking } = await supabase
+    .from('daily_tracking')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('date', today)
+    .maybeSingle()
+
+  const waterAmount = dailyTracking?.water_ml || 0
+  const mealsData = (dailyTracking?.meals_data as Record<string, boolean>) || {}
 
   // Fetch real gamification stats
   const { data: stats } = await supabase
@@ -129,6 +144,12 @@ export default async function DashboardPage() {
 
           {/* Side Column (Badges & Quick Actions) */}
           <div className="space-y-6">
+             {/* Gamification Trackers */}
+             <div className="grid grid-cols-1 gap-4">
+                <WaterTracker userId={user.id} currentAmount={waterAmount} />
+                <MealTracker userId={user.id} mealsData={mealsData} />
+             </div>
+
              <BadgesCard 
                 allBadges={allBadges || []} 
                 unlockedBadges={unlockedBadges || []} 
