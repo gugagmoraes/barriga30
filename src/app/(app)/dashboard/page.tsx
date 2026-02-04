@@ -100,7 +100,6 @@ export default async function DashboardPage() {
                         status={progressionStatus} 
                         isCriticalMode={profile?.critical_mode_active || false}
                         plan={profile?.plan_type || 'basic'}
-                        userId={user.id}
                     />
                     
                     {/* Quick Start Card (Secondary) */}

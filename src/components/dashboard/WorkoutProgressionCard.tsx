@@ -7,7 +7,7 @@ import { Lock, Heart, Dumbbell } from 'lucide-react'
 import Link from 'next/link'
 import { WorkoutLevel } from '@/services/progression'
 import { updateUserWorkoutLevel } from '@/app/actions/user'
-import { useState, useTransition } from 'react'
+import { useTransition } from 'react'
 import {
   Select,
   SelectContent,
@@ -25,10 +25,9 @@ interface ProgressionCardProps {
   }
   isCriticalMode: boolean
   plan: string // basic, plus, vip
-  userId: string
 }
 
-export function WorkoutProgressionCard({ status, isCriticalMode, plan, userId }: ProgressionCardProps) {
+export function WorkoutProgressionCard({ status, isCriticalMode, plan }: ProgressionCardProps) {
   const { currentLevel, progress, canLevelUp, nextLevelLocked } = status
   const [isPending, startTransition] = useTransition()
 
@@ -36,7 +35,7 @@ export function WorkoutProgressionCard({ status, isCriticalMode, plan, userId }:
       const newLevel = value as WorkoutLevel
       if (newLevel === currentLevel) return
       startTransition(async () => {
-          await updateUserWorkoutLevel(userId, newLevel)
+          await updateUserWorkoutLevel(newLevel)
       })
   }
 
