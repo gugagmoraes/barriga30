@@ -26,7 +26,7 @@ export async function addWater(userId: string, bottleSizeMl: number, dailyGoalMl
       .select()
       .single()
     
-    if (error) return { success: false, error: 'Failed to init daily tracking' }
+    if (error) return { success: false, error: 'Failed to init daily tracking', xpEarned: 0 }
     tracking = newTracking
   }
 
@@ -50,7 +50,7 @@ export async function addWater(userId: string, bottleSizeMl: number, dailyGoalMl
     .update(updatePayload)
     .eq('id', tracking.id)
 
-  if (updateError) return { success: false, error: 'Failed to update water' }
+  if (updateError) return { success: false, error: 'Failed to update water', xpEarned: 0 }
 
   // 4. Log XP if earned
   if (xpEarned > 0) {
@@ -63,7 +63,7 @@ export async function addWater(userId: string, bottleSizeMl: number, dailyGoalMl
   }
 
   revalidatePath('/dashboard')
-  return { success: true, xpEarned, newTotal: newAmount }
+  return { success: true, xpEarned: xpEarned, newTotal: newAmount }
 }
 
 export async function toggleMeal(userId: string, mealIndex: number, isCompleted: boolean) {
@@ -120,7 +120,7 @@ export async function toggleMeal(userId: string, mealIndex: number, isCompleted:
   const currentData = (tracking.meals_data as Record<string, boolean>) || {}
   const wasCompleted = !!currentData[mealIndex]
   
-  if (wasCompleted === isCompleted) return { success: true } // No change
+  if (wasCompleted === isCompleted) return { success: true, xpEarned: 0 } // No change
 
   const newData = { ...currentData, [mealIndex]: isCompleted }
   
@@ -136,7 +136,7 @@ export async function toggleMeal(userId: string, mealIndex: number, isCompleted:
     })
     .eq('id', tracking.id)
 
-  if (error) return { success: false, error: 'Failed to update meal' }
+  if (error) return { success: false, error: 'Failed to update meal', xpEarned: 0 }
 
   // XP Logic
   if (isCompleted) {
