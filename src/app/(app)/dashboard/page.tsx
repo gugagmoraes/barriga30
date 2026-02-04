@@ -32,6 +32,16 @@ export default async function DashboardPage() {
   const waterAmount = dailyTracking?.water_ml || 0
   const mealsData = (dailyTracking?.meals_data as Record<string, boolean>) || {}
 
+  // Fetch user diet preferences (for water goal)
+  const { data: dietPrefs } = await supabase
+      .from('diet_preferences')
+      .select('weight, water_bottle_size_ml')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+  const weight = dietPrefs?.weight || 70
+  const bottleSize = dietPrefs?.water_bottle_size_ml || 500
+
   // Fetch real gamification stats
   const { data: stats } = await supabase
     .from('user_stats')
@@ -146,7 +156,12 @@ export default async function DashboardPage() {
           <div className="space-y-6">
              {/* Gamification Trackers */}
              <div className="grid grid-cols-1 gap-4">
-                <WaterTracker userId={user.id} currentAmount={waterAmount} />
+                <WaterTracker 
+                    userId={user.id} 
+                    currentAmount={waterAmount} 
+                    weight={weight}
+                    bottleSize={bottleSize}
+                />
                 <MealTracker userId={user.id} mealsData={mealsData} />
              </div>
 

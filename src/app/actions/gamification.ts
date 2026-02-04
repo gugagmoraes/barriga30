@@ -4,12 +4,10 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 // Configurable constants
-const WATER_PORTION_ML = 250 // 1 copo
-const XP_PER_WATER_PORTION = 10
-const XP_PER_MEAL = 50
-const WATER_DAILY_GOAL = 2000
+const XP_PER_WATER_DAILY_GOAL = 50 // Fixed XP per day for hitting goal
+const XP_PER_MEAL = 15 // Updated from 50 to 15
 
-export async function addWater(userId: string) {
+export async function addWater(userId: string, bottleSizeMl: number, dailyGoalMl: number) {
   const supabase = await createClient()
   const today = new Date().toISOString().split('T')[0]
 
@@ -24,7 +22,7 @@ export async function addWater(userId: string) {
   if (!tracking) {
     const { data: newTracking, error } = await supabase
       .from('daily_tracking')
-      .insert({ user_id: userId, date: today, water_ml: 0, meals_completed: 0 })
+      .insert({ user_id: userId, date: today, water_ml: 0, meals_completed: 0, water_xp_granted: false })
       .select()
       .single()
     
@@ -33,26 +31,39 @@ export async function addWater(userId: string) {
   }
 
   // 2. Update Water
-  const newAmount = (tracking.water_ml || 0) + WATER_PORTION_ML
+  const newAmount = (tracking.water_ml || 0) + bottleSizeMl
   
+  // 3. Check for XP Award (Only once per day when goal reached)
+  let xpEarned = 0
+  const alreadyGranted = tracking.water_xp_granted || false
+  const reachedGoal = newAmount >= dailyGoalMl
+
+  const updatePayload: any = { water_ml: newAmount }
+  
+  if (reachedGoal && !alreadyGranted) {
+      xpEarned = XP_PER_WATER_DAILY_GOAL
+      updatePayload.water_xp_granted = true
+  }
+
   const { error: updateError } = await supabase
     .from('daily_tracking')
-    .update({ water_ml: newAmount })
+    .update(updatePayload)
     .eq('id', tracking.id)
 
   if (updateError) return { success: false, error: 'Failed to update water' }
 
-  // 3. Award XP
-  // Log activity
-  await supabase.from('user_activity_log').insert({
-    user_id: userId,
-    activity_type: 'water_logged',
-    xp_earned: XP_PER_WATER_PORTION,
-    metadata: { amount: WATER_PORTION_ML, date: today }
-  })
+  // 4. Log XP if earned
+  if (xpEarned > 0) {
+      await supabase.from('user_activity_log').insert({
+        user_id: userId,
+        activity_type: 'water_goal_reached',
+        xp_earned: xpEarned,
+        metadata: { date: today, goal: dailyGoalMl }
+      })
+  }
 
   revalidatePath('/dashboard')
-  return { success: true, xpEarned: XP_PER_WATER_PORTION, newTotal: newAmount }
+  return { success: true, xpEarned, newTotal: newAmount }
 }
 
 export async function toggleMeal(userId: string, mealIndex: number, isCompleted: boolean) {

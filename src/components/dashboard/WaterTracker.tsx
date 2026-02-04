@@ -11,24 +11,34 @@ import { toast } from 'sonner'
 interface WaterTrackerProps {
   userId: string
   currentAmount: number // ml
-  dailyGoal?: number // default 2000
+  weight?: number // kg
+  bottleSize?: number // ml
 }
 
-export function WaterTracker({ userId, currentAmount, dailyGoal = 2000 }: WaterTrackerProps) {
+export function WaterTracker({ userId, currentAmount, weight = 70, bottleSize = 500 }: WaterTrackerProps) {
   const [amount, setAmount] = useState(currentAmount)
   const [isPending, startTransition] = useTransition()
 
+  // Business Logic: 35ml per kg
+  const dailyGoal = Math.round(weight * 35)
+  const bottlesConsumed = (amount / bottleSize).toFixed(1)
+  const bottlesGoal = (dailyGoal / bottleSize).toFixed(1)
+  
   const percentage = Math.min(100, Math.round((amount / dailyGoal) * 100))
 
   const handleAddWater = () => {
     // Optimistic update
-    const newAmount = amount + 250
+    const newAmount = amount + bottleSize
     setAmount(newAmount)
 
     startTransition(async () => {
-      const result = await addWater(userId)
+      const result = await addWater(userId, bottleSize, dailyGoal)
       if (result.success) {
-        toast.success(`+${result.xpEarned} XP! Hidratação registrada. 💧`)
+        if (result.xpEarned > 0) {
+            toast.success(`Meta atingida! +${result.xpEarned} XP 💧`)
+        } else {
+            toast.success(`Hidratação registrada (+${bottleSize}ml)`)
+        }
       } else {
         setAmount(amount) // Revert
         toast.error('Erro ao registrar água.')
@@ -47,12 +57,15 @@ export function WaterTracker({ userId, currentAmount, dailyGoal = 2000 }: WaterT
       <CardContent className="space-y-4">
         <div className="flex justify-between items-end">
             <div>
-                <span className="text-2xl font-bold text-blue-700">{amount}</span>
-                <span className="text-xs text-blue-400 ml-1">/ {dailyGoal} ml</span>
+                <span className="text-2xl font-bold text-blue-700">{bottlesConsumed}</span>
+                <span className="text-xs text-blue-400 ml-1">/ {bottlesGoal} garrafas</span>
             </div>
-            <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
-                {percentage}%
-            </span>
+            <div className="text-right">
+                <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded-full block mb-1">
+                    {percentage}%
+                </span>
+                <span className="text-[10px] text-gray-400">Meta: {dailyGoal}ml</span>
+            </div>
         </div>
         
         <Progress value={percentage} className="h-2 bg-blue-100 [&>div]:bg-blue-500" />
@@ -64,7 +77,7 @@ export function WaterTracker({ userId, currentAmount, dailyGoal = 2000 }: WaterT
             className="w-full border-blue-200 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
         >
             <Plus className="h-4 w-4 mr-2" />
-            Beber Água (+250ml)
+            + 1 Garrafa ({bottleSize}ml)
         </Button>
       </CardContent>
     </Card>

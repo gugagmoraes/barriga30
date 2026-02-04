@@ -68,7 +68,7 @@ export function MealTracker({ userId, mealsData }: MealTrackerProps) {
                 </Label>
                 {state[meal.id] && (
                     <span className="text-[10px] text-green-600 font-bold px-2 py-0.5 bg-green-100 rounded-full">
-                        +50 XP
+                        +15 XP
                     </span>
                 )}
             </div>
