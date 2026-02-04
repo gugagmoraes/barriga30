@@ -3,26 +3,20 @@ import { createClient } from '@/lib/supabase/server'
 export async function getNextWorkoutForUser(userId: string) {
     const supabase = await createClient()
 
-    // 1. Get User Level (Assuming saved in users table or defaulting to beginner)
-    const { data: user } = await supabase.from('users').select('plan_type, activity_level').eq('id', userId).single()
-    const userLevel = 'beginner' // TODO: Implement real level logic from quiz result
+    // 1. Get User Level
+    const { data: user } = await supabase.from('users').select('workout_level').eq('id', userId).single()
+    const userLevel = user?.workout_level || 'beginner'
 
-    // 2. Get Last Completed Workout to determine rotation
-    const { data: lastLog } = await supabase
-        .from('workout_logs')
-        .select('workout_id, workouts(type)')
-        .eq('user_id', userId)
-        .order('completed_at', { ascending: false })
-        .limit(1)
-        .maybeSingle() // Use maybeSingle to avoid error if no logs
-
-    let nextType = 'A'
-    if (lastLog && lastLog.workouts) {
-        const lastType = (lastLog.workouts as any).type
-        if (lastType === 'A') nextType = 'B'
-        else if (lastType === 'B') nextType = 'C'
-        else if (lastType === 'C') nextType = 'A'
-    }
+    // 2. Determine Rotation based on Day of Year (Deterministic for "Workout of the Day")
+    // This ensures it changes every 24h regardless of completion
+    const startOfYear = new Date(new Date().getFullYear(), 0, 0);
+    const diff = (new Date() as any) - (startOfYear as any);
+    const oneDay = 1000 * 60 * 60 * 24;
+    const dayOfYear = Math.floor(diff / oneDay);
+    
+    // Rotation Sequence: A -> B -> C
+    const types = ['A', 'B', 'C'];
+    const nextType = types[dayOfYear % 3];
 
     // 3. Fetch the Workout
     const { data: workout } = await supabase
@@ -30,10 +24,22 @@ export async function getNextWorkoutForUser(userId: string) {
         .select('*')
         .eq('level', userLevel)
         .eq('type', nextType)
-        .maybeSingle() // Use maybeSingle to prevent 404/error if DB is empty
+        .eq('is_active', true) // Only active workouts
+        .maybeSingle()
 
     // 4. Return Placeholder if no workout exists in DB (Critical Fix)
     if (!workout) {
+        // Try to find ANY active workout for this level to avoid 404
+         const { data: fallbackWorkout } = await supabase
+            .from('workouts')
+            .select('*')
+            .eq('level', userLevel)
+            .eq('is_active', true)
+            .limit(1)
+            .maybeSingle()
+        
+        if (fallbackWorkout) return fallbackWorkout;
+
         return {
             id: 'placeholder-config',
             name: `Treino ${nextType} (${userLevel})`,

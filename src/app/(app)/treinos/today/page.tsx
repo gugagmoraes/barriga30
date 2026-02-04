@@ -10,11 +10,11 @@ export default async function TodayWorkoutPage() {
 
     const workout = await getNextWorkoutForUser(user.id)
 
-    if (workout) {
+    if (workout && workout.id !== 'placeholder-config') {
         redirect(`/treinos/${workout.id}`)
     }
 
-    // Fallback if no workout found (e.g., no workouts seeded for level)
+    // Fallback if no workout found or placeholder
     return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] p-4 text-center">
             <h1 className="text-xl font-bold mb-2">Nenhum treino encontrado</h1>
