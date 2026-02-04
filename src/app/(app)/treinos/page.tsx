@@ -34,14 +34,36 @@ function isValidFullEmbedUrl(url: unknown) {
 
 export default async function WorkoutsPage() {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  // Fetch user profile for plan restriction logic
+   let userPlan = 'basic'
+   let userLevel = 'beginner'
+ 
+   if (user) {
+     const { data: profile } = await supabase.from('users').select('plan_type, workout_level').eq('id', user.id).single()
+     if (profile) {
+         userPlan = profile.plan_type || 'basic'
+         userLevel = profile.workout_level || 'beginner'
+     }
+   }
+
   const { data: workouts } = await supabase.from('workouts').select('*').eq('is_active', true).order('created_at', { ascending: true })
 
   // If no workouts, mock some for display
-  const displayWorkouts = workouts && workouts.length > 0 ? workouts : [
+  const allWorkouts = workouts && workouts.length > 0 ? workouts : [
       { id: '1', name: 'Treino A - Full Body', level: 'beginner', duration_minutes: 30, video_url: '' },
       { id: '2', name: 'Treino B - Cardio Abs', level: 'beginner', duration_minutes: 25, video_url: '' },
       { id: '3', name: 'Treino C - Pernas e Glúteos', level: 'beginner', duration_minutes: 35, video_url: '' },
+      // Add mocks for other levels if needed for testing visually, but usually DB has them.
   ]
+
+  // Filter Logic:
+  // If Basic: Show ONLY current level.
+  // If Plus/VIP: Show ALL levels.
+  const displayWorkouts = userPlan === 'basic' 
+      ? allWorkouts.filter(w => w.level === userLevel)
+      : allWorkouts
 
   return (
     <div className="space-y-6">

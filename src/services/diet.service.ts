@@ -41,7 +41,7 @@ async function generateDietWithAI(userProfile: any, targets: any): Promise<any> 
     5. Evite ultraprocessados.
     
     SAÍDA ESPERADA (JSON):
-    Retorne APENAS um JSON válido com a estrutura abaixo, sem markdown (```json ... ```) ou texto extra:
+    Retorne APENAS um JSON válido com a estrutura abaixo, sem markdown ou texto extra:
     {
       "meals": [
         {

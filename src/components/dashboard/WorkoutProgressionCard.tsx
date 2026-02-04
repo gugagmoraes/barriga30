@@ -1,9 +1,20 @@
+'use client'
+
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Lock, Heart, Dumbbell, Zap, Activity } from 'lucide-react'
+import { Lock, Heart, Dumbbell } from 'lucide-react'
 import Link from 'next/link'
-import { WorkoutLevel, WorkoutType } from '@/services/progression'
+import { WorkoutLevel } from '@/services/progression'
+import { updateUserWorkoutLevel } from '@/app/actions/user'
+import { useState, useTransition } from 'react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface ProgressionCardProps {
   status: {
@@ -17,18 +28,25 @@ interface ProgressionCardProps {
   userId: string
 }
 
-const getProgressMessage = (count: number) => {
-    if (count === 0) return 'Primeiro passo feito é o mais importante 👣'
-    if (count === 1) return 'Ótimo começo! Continue assim 🔥'
-    if (count === 2) return 'Quase na metade! Não pare 💪'
-    if (count === 3) return 'Você já está indo melhor que a maioria 🚀'
-    if (count === 4) return 'Falta só mais um! Vamos lá 🏆'
-    if (count >= 5) return 'Nível concluído! Hora de subir 🔥'
-    return 'Mantenha o foco!'
-}
-
-export function WorkoutProgressionCard({ status, isCriticalMode, plan }: ProgressionCardProps) {
+export function WorkoutProgressionCard({ status, isCriticalMode, plan, userId }: ProgressionCardProps) {
   const { currentLevel, progress, canLevelUp, nextLevelLocked } = status
+  const [isPending, startTransition] = useTransition()
+
+  const handleLevelChange = (value: string) => {
+      const newLevel = value as WorkoutLevel
+      if (newLevel === currentLevel) return
+      startTransition(async () => {
+          await updateUserWorkoutLevel(userId, newLevel)
+      })
+  }
+
+  const levelLabels: Record<string, string> = {
+      'beginner': 'Iniciante',
+      'intermediate': 'Intermediário',
+      'advanced': 'Avançado'
+  }
+
+  const isVipOrPlus = plan === 'vip' || plan === 'plus'
 
   // VIP Critical Mode Override
   if (isCriticalMode) {
@@ -58,11 +76,52 @@ export function WorkoutProgressionCard({ status, isCriticalMode, plan }: Progres
     )
   }
 
+  // Common Header with Selector
+  const HeaderContent = () => {
+    if (isVipOrPlus) {
+        return (
+            <div className="flex justify-between items-center w-full">
+                <div className="flex items-center gap-2">
+                    <span className="text-base font-bold text-gray-900">Seu Nível:</span>
+                    <Select 
+                        disabled={isPending} 
+                        value={currentLevel} 
+                        onValueChange={handleLevelChange}
+                    >
+                        <SelectTrigger className="w-[140px] h-8 font-bold border-gray-200 bg-white">
+                            <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="beginner">Iniciante</SelectItem>
+                            <SelectItem value="intermediate">Intermediário</SelectItem>
+                            <SelectItem value="advanced">Avançado</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+        )
+    }
+
+    return (
+        <div className="flex justify-between items-center w-full">
+            <CardTitle className="text-base font-bold text-gray-900">
+                Seu Nível: {levelLabels[currentLevel]}
+            </CardTitle>
+            <span className="text-xs font-medium text-gray-400 bg-gray-50 px-2 py-1 rounded-full">
+                {currentLevel === 'advanced' ? 'Nível Máximo' : 'Próximo: ' + (levelLabels[Object.keys(levelLabels)[Object.keys(levelLabels).indexOf(currentLevel) + 1]] || 'Avançado')}
+            </span>
+        </div>
+    )
+  }
+
   // Level Up / Upgrade Block
   if (canLevelUp) {
     if (nextLevelLocked) {
         return (
             <Card className="bg-gray-50 border-gray-200 border-dashed shadow-sm">
+                <CardHeader className="pb-2 border-b border-gray-50">
+                    <HeaderContent />
+                </CardHeader>
                 <CardContent className="flex flex-col items-center justify-center p-6 text-center space-y-4">
                     <div className="bg-gray-200 p-3 rounded-full">
                         <Lock className="h-6 w-6 text-gray-500" />
@@ -73,9 +132,11 @@ export function WorkoutProgressionCard({ status, isCriticalMode, plan }: Progres
                             Você dominou o Intermediário! Para acessar treinos de elite, faça o upgrade do seu plano.
                         </p>
                     </div>
-                    <Button variant="default" className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 border-0">
-                        Desbloquear Agora
-                    </Button>
+                    <Link href="/register?plan=plus" className="w-full">
+                        <Button variant="default" className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 border-0">
+                            Desbloquear Agora
+                        </Button>
+                    </Link>
                 </CardContent>
             </Card>
         )
@@ -83,6 +144,9 @@ export function WorkoutProgressionCard({ status, isCriticalMode, plan }: Progres
 
     return (
         <Card className="bg-gradient-to-br from-purple-50 to-white border-purple-100 shadow-md">
+            <CardHeader className="pb-2 border-b border-purple-100/50">
+                <HeaderContent />
+            </CardHeader>
             <CardContent className="flex flex-col items-center justify-center p-6 text-center space-y-4">
                 <div className="bg-purple-100 p-3 rounded-full animate-bounce">
                     <Dumbbell className="h-6 w-6 text-purple-600" />
@@ -97,9 +161,20 @@ export function WorkoutProgressionCard({ status, isCriticalMode, plan }: Progres
                     <Button variant="outline" className="flex-1 border-purple-200 text-purple-700 hover:bg-purple-50">
                         Manter Atual
                     </Button>
-                    {/* TODO: Action to actually change level */}
-                    <Button className="flex-1 bg-purple-600 hover:bg-purple-700">
-                        Subir de Nível
+                    {/* Action to change level via button */}
+                    <Button 
+                        className="flex-1 bg-purple-600 hover:bg-purple-700"
+                        onClick={() => {
+                             const nextMap: Record<string, string> = {
+                                'beginner': 'intermediate',
+                                'intermediate': 'advanced',
+                                'advanced': 'advanced'
+                              };
+                              handleLevelChange(nextMap[currentLevel] as WorkoutLevel)
+                        }}
+                        disabled={isPending}
+                    >
+                        {isPending ? 'Atualizando...' : 'Subir de Nível'}
                     </Button>
                 </div>
             </CardContent>
@@ -107,32 +182,19 @@ export function WorkoutProgressionCard({ status, isCriticalMode, plan }: Progres
     )
   }
 
-  // Standard Progression View (Single Next Workout Only)
-  const levelLabels: Record<string, string> = {
-      'beginner': 'Iniciante',
-      'intermediate': 'Intermediário',
-      'advanced': 'Avançado'
-  }
-  
+  // Standard Progression View
   return (
     <Card className="shadow-sm border-gray-100">
       <CardHeader className="pb-2 border-b border-gray-50">
-        <div className="flex justify-between items-center">
-            <CardTitle className="text-base font-bold text-gray-900">
-                Seu Nível: {levelLabels[currentLevel]}
-            </CardTitle>
-            <span className="text-xs font-medium text-gray-400 bg-gray-50 px-2 py-1 rounded-full">
-                {currentLevel === 'advanced' ? 'Nível Máximo' : 'Próximo Nível: ' + (levelLabels[Object.keys(levelLabels)[Object.keys(levelLabels).indexOf(currentLevel) + 1]] || 'Avançado')}
-            </span>
-        </div>
+        <HeaderContent />
       </CardHeader>
       <CardContent className="pt-6 pb-6">
             <div className="space-y-4">
                 <div className="flex justify-between text-sm text-gray-600">
                     <span>Progresso para subir de nível</span>
-                    <span className="font-bold">{Math.round((progress.A + progress.B + progress.C) / 15 * 100)}%</span>
+                    <span className="font-bold">{Math.min(100, Math.round((progress.A + progress.B + progress.C) / 12 * 100))}%</span>
                 </div>
-                <Progress value={(progress.A + progress.B + progress.C) / 15 * 100} className="h-3" />
+                <Progress value={Math.min(100, (progress.A + progress.B + progress.C) / 12 * 100)} className="h-3" />
                 <p className="text-xs text-gray-400 text-center">
                     Complete seus treinos diários para desbloquear o próximo estágio.
                 </p>

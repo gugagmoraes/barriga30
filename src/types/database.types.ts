@@ -17,6 +17,7 @@ export interface Database {
           email: string
           name: string
           plan_type: PlanType
+          workout_level: 'beginner' | 'intermediate' | 'advanced'
           gender: string | null
           age: number | null
           height: number | null
@@ -33,6 +34,7 @@ export interface Database {
           email: string
           name: string
           plan_type?: PlanType
+          workout_level?: 'beginner' | 'intermediate' | 'advanced'
           gender?: string | null
           age?: number | null
           height?: number | null
@@ -49,6 +51,7 @@ export interface Database {
           email?: string
           name?: string
           plan_type?: PlanType
+          workout_level?: 'beginner' | 'intermediate' | 'advanced'
           gender?: string | null
           age?: number | null
           height?: number | null

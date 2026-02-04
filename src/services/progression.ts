@@ -18,9 +18,9 @@ export async function getUserProgression(userId: string): Promise<ProgressionSta
   const supabase = await createClient();
 
   // 1. Get User Info
-  const { data: user } = await supabase.from('users').select('workout_level, plan').eq('id', userId).single();
+  const { data: user } = await supabase.from('users').select('workout_level, plan_type').eq('id', userId).single();
   const currentLevel = user?.workout_level || 'beginner';
-  const plan = user?.plan || 'basic';
+  const plan = user?.plan_type || 'basic';
 
   // 2. Count Completions for Current Level
   // We need to count logs where metadata->workoutLevel == currentLevel AND metadata->workoutType == A/B/C
@@ -44,8 +44,8 @@ export async function getUserProgression(userId: string): Promise<ProgressionSta
     }
   });
 
-  // 3. Check Level Up Logic (5 of each)
-  const isReady = counts.A >= 5 && counts.B >= 5 && counts.C >= 5;
+  // 3. Check Level Up Logic (4 of each)
+  const isReady = counts.A >= 4 && counts.B >= 4 && counts.C >= 4;
 
   // 4. Check Plan Restrictions
   // Basic: Beginner -> Intermediate (Allowed). Intermediate -> Advanced (Blocked).
@@ -91,8 +91,8 @@ export async function levelUpUser(userId: string) {
 export async function toggleCriticalMode(userId: string, active: boolean) {
    const supabase = await createClient();
    // Check if VIP
-   const { data: user } = await supabase.from('users').select('plan').eq('id', userId).single();
-   if (user?.plan !== 'vip') return { success: false, message: 'Apenas VIP' };
+   const { data: user } = await supabase.from('users').select('plan_type').eq('id', userId).single();
+   if (user?.plan_type !== 'vip') return { success: false, message: 'Apenas VIP' };
 
    const { error } = await supabase.from('users').update({ critical_mode_active: active }).eq('id', userId);
    return { success: !error };

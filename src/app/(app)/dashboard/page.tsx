@@ -99,7 +99,7 @@ export default async function DashboardPage() {
                     <WorkoutProgressionCard 
                         status={progressionStatus} 
                         isCriticalMode={profile?.critical_mode_active || false}
-                        plan={profile?.plan || 'basic'}
+                        plan={profile?.plan_type || 'basic'}
                         userId={user.id}
                     />
                     
