@@ -9,14 +9,15 @@ export async function getNextWorkoutForUser(userId: string) {
 
     // 2. Determine Rotation based on Day of Year (Deterministic for "Workout of the Day")
     // This ensures it changes every 24h regardless of completion
-    const startOfYear = new Date(new Date().getFullYear(), 0, 0);
-    const diff = (new Date() as any) - (startOfYear as any);
-    const oneDay = 1000 * 60 * 60 * 24;
-    const dayOfYear = Math.floor(diff / oneDay);
+    const now = new Date()
+    const startOfYear = new Date(now.getFullYear(), 0, 0)
+    const diffMs = now.getTime() - startOfYear.getTime()
+    const oneDayMs = 1000 * 60 * 60 * 24
+    const dayOfYear = Math.floor(diffMs / oneDayMs)
     
     // Rotation Sequence: A -> B -> C
-    const types = ['A', 'B', 'C'];
-    const nextType = types[dayOfYear % 3];
+    const types = ['A', 'B', 'C'] as const
+    const nextType = types[dayOfYear % 3]
 
     // 3. Fetch the Workout
     const { data: workout } = await supabase
@@ -24,13 +25,13 @@ export async function getNextWorkoutForUser(userId: string) {
         .select('*')
         .eq('level', userLevel)
         .eq('type', nextType)
-        .eq('is_active', true) // Only active workouts
+        .eq('is_active', true)
         .maybeSingle()
 
     // 4. Return Placeholder if no workout exists in DB (Critical Fix)
     if (!workout) {
         // Try to find ANY active workout for this level to avoid 404
-         const { data: fallbackWorkout } = await supabase
+        const { data: fallbackWorkout } = await supabase
             .from('workouts')
             .select('*')
             .eq('level', userLevel)
@@ -38,7 +39,7 @@ export async function getNextWorkoutForUser(userId: string) {
             .limit(1)
             .maybeSingle()
         
-        if (fallbackWorkout) return fallbackWorkout;
+        if (fallbackWorkout) return fallbackWorkout
 
         return {
             id: 'placeholder-config',

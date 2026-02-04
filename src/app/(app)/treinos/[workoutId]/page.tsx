@@ -27,6 +27,7 @@ export default async function WorkoutPage({ params }: { params: Promise<{ workou
   }
 
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   
   const { data: workout } = await supabase.from('workouts').select('*').eq('id', id).single()
 
@@ -44,10 +45,27 @@ export default async function WorkoutPage({ params }: { params: Promise<{ workou
   }
 
   const regression = await getRegressionWorkout(workout)
+  const startOfDay = new Date()
+  startOfDay.setHours(0, 0, 0, 0)
+
+  const { data: completionLog } = user
+    ? await supabase
+        .from('user_activity_log')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('activity_type', 'workout_completed')
+        .eq('reference_id', workout.id)
+        .gte('created_at', startOfDay.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null }
+
+  const completedToday = !!completionLog
 
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col">
-       <WorkoutPlayer workout={workout} regression={regression} />
+       <WorkoutPlayer workout={workout} regression={regression} initialCompletedToday={completedToday} />
     </div>
   )
 }

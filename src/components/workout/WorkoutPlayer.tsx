@@ -23,9 +23,17 @@ interface Workout {
     exercises?: Exercise[] 
 }
 
-export default function WorkoutPlayer({ workout, regression }: { workout: Workout, regression?: Workout | null }) {
+export default function WorkoutPlayer({
+    workout,
+    regression,
+    initialCompletedToday
+}: {
+    workout: Workout
+    regression?: Workout | null
+    initialCompletedToday?: boolean
+}) {
     const [isPlaying, setIsPlaying] = useState(false)
-    const [isCompleted, setIsCompleted] = useState(false)
+    const [isCompleted, setIsCompleted] = useState(!!initialCompletedToday)
     const [showSuccessModal, setShowSuccessModal] = useState(false)
     const [earnedXP, setEarnedXP] = useState(0)
     const [newBadges, setNewBadges] = useState<string[]>([])
@@ -157,6 +165,12 @@ export default function WorkoutPlayer({ workout, regression }: { workout: Workou
                 />
             )}
 
+            {isCompleted && (
+                <div className="absolute top-4 left-4 z-30 bg-green-600/90 text-white text-xs font-bold px-4 py-2 rounded-full shadow-lg backdrop-blur-sm">
+                    Você já concluiu este treino hoje. Parabéns!
+                </div>
+            )}
+
             {/* Regression Option */}
             {regression && (
                 <div className="absolute top-4 right-4 z-30">
@@ -233,7 +247,7 @@ export default function WorkoutPlayer({ workout, regression }: { workout: Workou
                         {isCompleted ? (
                             <>
                                 <CheckCircle className="w-5 h-5 mr-2" />
-                                Concluído
+                                Treino Concluído Hoje
                             </>
                         ) : (
                             'Marcar como Concluído'
