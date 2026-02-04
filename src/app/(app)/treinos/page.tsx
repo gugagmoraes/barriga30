@@ -76,7 +76,7 @@ export default async function WorkoutsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {displayWorkouts.map((workout) => {
             const isLocked = userPlan === 'basic' && 
-                             levelOrder[workout.level as keyof typeof levelOrder] > levelOrder[userLevel as keyof typeof levelOrder];
+                             levelOrder[workout.level as keyof typeof levelOrder] !== levelOrder[userLevel as keyof typeof levelOrder];
 
             return (
               <div key={workout.id} className={`bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden transition relative ${isLocked ? 'grayscale opacity-70 pointer-events-none' : ''}`}>
