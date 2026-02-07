@@ -17,8 +17,8 @@ function isPlanKey(value: string): value is PlanKey {
   return value === 'basic' || value === 'plus' || value === 'vip'
 }
 
-function getRequestOrigin() {
-  const h = headers()
+async function getRequestOrigin() {
+  const h = await headers()
   const proto = h.get('x-forwarded-proto') ?? 'https'
   const host = h.get('x-forwarded-host') ?? h.get('host')
   if (host) return `${proto}://${host}`
@@ -52,7 +52,7 @@ export default async function CheckoutPage({
     )
   }
 
-  const origin = process.env.NEXT_PUBLIC_APP_URL || getRequestOrigin()
+  const origin = process.env.NEXT_PUBLIC_APP_URL || (await getRequestOrigin())
   const successUrl =
     process.env.NEXT_PUBLIC_STRIPE_SUCCESS_URL || `${origin}/pagamento-sucesso?plan=${plan}`
   const cancelUrl =
