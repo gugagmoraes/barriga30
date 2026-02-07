@@ -144,7 +144,7 @@ export async function signup(prevState: any, formData: FormData) {
     const priceMap: Record<string, string> = {
         'basic': 'price_1SjR0fGigUIifkMigDDhf5pv', 
         'plus': 'price_1SjR1vGigUIifkMib6IHcTak',
-        'vip': 'price_1SjR2OGigUIifkMiqqrZeQUq'
+        'vip': 'price_1SyI7SGigUIifkMizfRzNT4V'
     }
 
     const priceId = priceMap[plan.toLowerCase()]

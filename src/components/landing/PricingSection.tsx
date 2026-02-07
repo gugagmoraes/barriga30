@@ -69,7 +69,7 @@ export const PricingSection = () => {
                 <CountdownTimer />
               </div>
 
-              <Link href="/checkout?plan=basic-offer" className="w-full md:w-auto">
+              <Link href="/register?plan=basic" className="w-full md:w-auto">
                 <Button className="w-full md:w-auto bg-yellow-400 text-red-900 hover:bg-yellow-300 hover:scale-105 transition-all font-black text-xl md:text-2xl py-8 px-10 rounded-xl shadow-xl border-b-4 border-yellow-600">
                   Garantir Meu Plano Essencial Agora!
                 </Button>
@@ -141,7 +141,7 @@ export const PricingSection = () => {
             </div>
             
             <div className="p-6 bg-gray-50 border-t border-gray-100 mt-auto">
-              <Link href="/checkout?plan=basic-offer" className="block">
+              <Link href="/register?plan=basic" className="block">
                 <Button variant="outline" className="w-full py-6 text-lg font-bold border-2 border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-900 hover:border-gray-400 transition-all rounded-xl">
                   Escolher Plano Essencial
                 </Button>
@@ -204,7 +204,7 @@ export const PricingSection = () => {
             </div>
             
             <div className="p-6 bg-orange-50/50 mt-auto border-t border-orange-100">
-              <Link href="/checkout?plan=evolution" className="block">
+              <Link href="/register?plan=plus" className="block">
                 <Button className="w-full py-8 text-xl font-black bg-[#FF4D4D] hover:bg-[#e63e3e] text-white shadow-xl shadow-orange-200 hover:shadow-orange-300 transition-all transform hover:scale-[1.02] rounded-xl border-b-4 border-[#cc0000]">
                   Escolher Plano Evolução
                 </Button>
@@ -256,7 +256,7 @@ export const PricingSection = () => {
             </div>
             
             <div className="p-6 bg-gray-50 border-t border-gray-100 mt-auto">
-              <Link href="/checkout?plan=premium" className="block">
+              <Link href="/register?plan=vip" className="block">
                 <Button variant="outline" className="w-full py-6 text-lg font-bold border-2 border-purple-200 text-purple-700 hover:bg-purple-50 hover:text-purple-900 hover:border-purple-300 transition-all rounded-xl">
                   Escolher Plano Premium
                 </Button>
