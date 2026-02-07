@@ -167,6 +167,8 @@ export async function signup(prevState: any, formData: FormData) {
           if (url) {
             console.log('Redirecionando para Stripe:', url)
             redirect(url)
+          } else {
+            console.error('Stripe session created but no URL returned')
           }
       } catch (e: any) {
           // Se for erro de redirecionamento do Next.js, deixa passar
