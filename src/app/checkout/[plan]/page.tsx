@@ -29,15 +29,18 @@ export default async function CheckoutPage({
   params,
   searchParams,
 }: {
-  params: { plan: string }
-  searchParams?: { debug?: string }
+  params: { plan: string } | Promise<{ plan: string }>
+  searchParams?: { debug?: string } | Promise<{ debug?: string }>
 }) {
-  const { plan } = params
-  const debug = searchParams?.debug === '1'
+  const resolvedParams = await Promise.resolve(params)
+  const resolvedSearchParams = searchParams ? await Promise.resolve(searchParams) : undefined
+
+  const plan = resolvedParams?.plan
+  const debug = resolvedSearchParams?.debug === '1'
 
   console.log(`[CHECKOUT] hit /checkout/${plan} debug=${debug}`)
 
-  if (!isPlanKey(plan)) {
+  if (typeof plan !== 'string' || !isPlanKey(plan)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
         <h1 className="text-2xl font-bold text-red-600">Plano inválido</h1>
