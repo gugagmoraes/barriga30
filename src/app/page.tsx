@@ -71,6 +71,8 @@ const CarouselPlaceholder = ({ title, subtitle, items, caption }: { title: strin
   )
 }
 
+import { PricingSection } from '@/components/landing/PricingSection'
+
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white font-sans text-gray-900 overflow-x-hidden">
@@ -724,121 +726,7 @@ export default function LandingPage() {
         </section>
 
         {/* PLANS - MOBILE OPTIMIZED */}
-        <section className="py-12 px-4 md:py-24 md:px-6 bg-[#FDFBF7]" id="plans">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-10 md:mb-16">
-              <h2 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-4">
-                PLANOS
-              </h2>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-6 md:gap-8 max-w-sm md:max-w-none mx-auto">
-              
-              {/* BASIC PLAN */}
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden flex flex-col">
-                <div className="p-6 md:p-8 flex-1">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">BÁSICO</h3>
-                  <div className="flex items-baseline gap-1 mb-6">
-                    <span className="text-3xl font-extrabold text-gray-900">R$ 97</span>
-                    <span className="text-gray-500 font-medium">/ano</span>
-                  </div>
-                   <p className="text-xs md:text-sm text-gray-500 mb-4">(12x R$ 9,90)</p>
-                  <ul className="space-y-4">
-                    <li className="flex gap-3 text-sm text-gray-700">
-                      <Check className="w-5 h-5 text-gray-400 shrink-0" /> Treinos básicos
-                    </li>
-                    <li className="flex gap-3 text-sm text-gray-700">
-                      <Check className="w-5 h-5 text-gray-400 shrink-0" /> Gamificação
-                    </li>
-                    <li className="flex gap-3 text-sm text-gray-700">
-                      <Check className="w-5 h-5 text-gray-400 shrink-0" /> Dieta simples
-                    </li>
-                  </ul>
-                </div>
-                <div className="p-6 bg-gray-50 mt-auto">
-                  <Link href="/register?plan=basic" className="block">
-                    <Button variant="outline" className="w-full h-12 text-base font-bold border-2 border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-gray-800 hover:border-gray-300">
-                      Começar com o Básico
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-
-              {/* PLUS PLAN (HIGHLIGHTED) */}
-              <div id="pricing" className="bg-white rounded-2xl shadow-xl border-2 border-[#FF7F50] overflow-hidden flex flex-col relative transform md:-translate-y-4 scale-105 md:scale-100 z-10 scroll-mt-24">
-                <div className="bg-[#FF7F50] text-white text-center text-sm font-bold py-2 uppercase tracking-wide">
-                  Recomendado
-                </div>
-                <div className="p-6 md:p-8 flex-1">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">PLUS</h3>
-                  <div className="flex items-baseline gap-1 mb-6">
-                    <span className="text-4xl font-extrabold text-[#FF7F50]">R$ 197</span>
-                    <span className="text-gray-500 font-medium">/ano</span>
-                  </div>
-                  <p className="text-xs md:text-sm text-gray-500 mb-4">(12x R$ 19,90)</p>
-                  <ul className="space-y-4">
-                    <li className="flex gap-3 text-sm text-gray-700 font-bold">
-                      <Check className="w-5 h-5 text-[#FF7F50] shrink-0" /> Tudo do Básico
-                    </li>
-                    <li className="flex gap-3 text-sm text-gray-700">
-                      <Check className="w-5 h-5 text-[#FF7F50] shrink-0" /> Treinos intermediários
-                    </li>
-                    <li className="flex gap-3 text-sm text-gray-700">
-                      <Check className="w-5 h-5 text-[#FF7F50] shrink-0" /> Dieta personalizada por IA
-                    </li>
-                    <li className="flex gap-3 text-sm text-gray-700">
-                      <Check className="w-5 h-5 text-[#FF7F50] shrink-0" /> Checklist de compras
-                    </li>
-                  </ul>
-                </div>
-                <div className="p-6 bg-[#fff5f5] mt-auto">
-                  <Link href="/register?plan=plus" className="block">
-                    <Button className="w-full h-14 text-lg font-bold bg-[#FF7F50] hover:bg-[#FF6347] text-white shadow-lg shadow-orange-200 transition-all transform hover:scale-[1.02] active:scale-95">
-                      Quero o Plano Plus
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-
-              {/* VIP PLAN */}
-              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden flex flex-col">
-                <div className="p-6 md:p-8 flex-1">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">VIP</h3>
-                  <div className="flex items-baseline gap-1 mb-6">
-                    <span className="text-3xl font-extrabold text-gray-900">R$ 397</span>
-                    <span className="text-gray-500 font-medium">/ano</span>
-                  </div>
-                  <p className="text-xs md:text-sm text-gray-500 mb-4">(12x R$ 39,90)</p>
-                  <ul className="space-y-4">
-                    <li className="flex gap-3 text-sm text-gray-700 font-bold">
-                      <Check className="w-5 h-5 text-purple-500 shrink-0" /> Tudo do Plus
-                    </li>
-                    <li className="flex gap-3 text-sm text-gray-700">
-                      <Check className="w-5 h-5 text-purple-500 shrink-0" /> Treinos avançados
-                    </li>
-                    <li className="flex gap-3 text-sm text-gray-700">
-                      <Check className="w-5 h-5 text-purple-500 shrink-0" /> Biblioteca premium
-                    </li>
-                    <li className="flex gap-3 text-sm text-gray-700">
-                      <Check className="w-5 h-5 text-purple-500 shrink-0" /> Status VIP
-                    </li>
-                    <li className="flex gap-3 text-sm text-gray-700">
-                      <Check className="w-5 h-5 text-purple-500 shrink-0" /> Desconto na renovação
-                    </li>
-                  </ul>
-                </div>
-                <div className="p-6 bg-gray-50 mt-auto">
-                  <Link href="/register?plan=vip" className="block">
-                    <Button variant="outline" className="w-full h-12 text-base font-bold border-2 border-purple-200 text-purple-600 hover:bg-purple-50 hover:border-purple-300">
-                      Quero Ser VIP
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </section>
+        <PricingSection />
 
         {/* FAQ */}
         <section className="py-12 px-4 md:py-20 md:px-6 bg-white border-t border-gray-100">
