@@ -30,7 +30,7 @@ export default async function DashboardPage() {
     .maybeSingle()
 
   const waterAmount = dailyTracking?.water_ml || 0
-  const mealsData = (dailyTracking?.meals_data as Record<string, boolean>) || {}
+  const mealsCompleted = dailyTracking?.meals_completed || 0
 
   // Fetch user diet preferences (for water goal)
   const { data: dietPrefs } = await supabase
@@ -41,6 +41,15 @@ export default async function DashboardPage() {
 
   const weight = dietPrefs?.weight || 70
   const bottleSize = dietPrefs?.water_bottle_size_ml || 500
+
+  const { data: snapshot } = await supabase
+    .from('diet_snapshots')
+    .select('*, snapshot_meals(*, snapshot_items(*))')
+    .eq('user_id', user.id)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  const meals = (snapshot?.snapshot_meals || []).sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
 
   // Fetch real gamification stats
   const { data: stats } = await supabase
@@ -157,12 +166,11 @@ export default async function DashboardPage() {
              {/* Gamification Trackers */}
              <div className="grid grid-cols-1 gap-4">
                 <WaterTracker 
-                    userId={user.id} 
                     currentAmount={waterAmount} 
                     weight={weight}
                     bottleSize={bottleSize}
                 />
-                <MealTracker userId={user.id} mealsData={mealsData} />
+                <MealTracker mealsCompleted={mealsCompleted} meals={meals} />
              </div>
 
              <BadgesCard 

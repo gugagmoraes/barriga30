@@ -3,23 +3,21 @@
 import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Droplets, Plus } from 'lucide-react'
-import { addWater } from '@/app/actions/gamification'
+import { Droplets, Minus, Plus } from 'lucide-react'
+import { addWater, removeWater } from '@/app/actions/gamification'
 import { Progress } from '@/components/ui/progress'
 import { toast } from 'sonner'
 
 interface WaterTrackerProps {
-  userId: string
   currentAmount: number // ml
   weight?: number // kg
   bottleSize?: number // ml
 }
 
-export function WaterTracker({ userId, currentAmount, weight = 70, bottleSize = 500 }: WaterTrackerProps) {
+export function WaterTracker({ currentAmount, weight = 70, bottleSize = 500 }: WaterTrackerProps) {
   const [amount, setAmount] = useState(currentAmount)
   const [isPending, startTransition] = useTransition()
 
-  // Business Logic: 35ml per kg
   const dailyGoal = Math.round(weight * 35)
   const bottlesConsumed = (amount / bottleSize).toFixed(1)
   const bottlesGoal = (dailyGoal / bottleSize).toFixed(1)
@@ -27,12 +25,11 @@ export function WaterTracker({ userId, currentAmount, weight = 70, bottleSize = 
   const percentage = Math.min(100, Math.round((amount / dailyGoal) * 100))
 
   const handleAddWater = () => {
-    // Optimistic update
-    const newAmount = amount + bottleSize
+    const newAmount = Math.min(dailyGoal, amount + bottleSize)
     setAmount(newAmount)
 
     startTransition(async () => {
-      const result = await addWater(userId, bottleSize, dailyGoal)
+      const result = await addWater(bottleSize, dailyGoal)
       if (result.success) {
         if (result.xpEarned > 0) {
             toast.success(`Meta atingida! +${result.xpEarned} XP 💧`)
@@ -42,6 +39,19 @@ export function WaterTracker({ userId, currentAmount, weight = 70, bottleSize = 
       } else {
         setAmount(amount) // Revert
         toast.error('Erro ao registrar água.')
+      }
+    })
+  }
+
+  const handleRemoveWater = () => {
+    const newAmount = Math.max(0, amount - bottleSize)
+    setAmount(newAmount)
+
+    startTransition(async () => {
+      const result = await removeWater(bottleSize, dailyGoal)
+      if (!result.success) {
+        setAmount(amount)
+        toast.error('Erro ao remover água.')
       }
     })
   }
@@ -72,24 +82,12 @@ export function WaterTracker({ userId, currentAmount, weight = 70, bottleSize = 
         
         <div className="flex gap-2">
             <Button 
-                onClick={() => {
-                    // Logic to remove water
-                    // We need a server action for this or modify addWater to accept negative
-                    // Let's modify addWater to handle negative in next step or use separate
-                    // Since I can't easily add a prop to addWater without breaking signature?
-                    // addWater(userId, -bottleSize, dailyGoal) works if bottleSize is just amount.
-                    // Wait, logic in addWater: newAmount = current + bottleSize. So negative works.
-                    const newAmount = Math.max(0, amount - bottleSize)
-                    setAmount(newAmount)
-                    startTransition(async () => {
-                        await addWater(userId, -bottleSize, dailyGoal)
-                    })
-                }} 
+                onClick={handleRemoveWater} 
                 disabled={isPending || amount <= 0}
                 variant="outline" 
                 className="flex-1 border-blue-200 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
             >
-                -
+                <Minus className="h-4 w-4" />
             </Button>
             <Button 
                 onClick={handleAddWater} 
