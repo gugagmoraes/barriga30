@@ -1,9 +1,8 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Star, Zap } from 'lucide-react'
-import Link from 'next/link'
 import { CountdownTimer } from './CountdownTimer'
 import { cn } from '@/lib/utils'
 
@@ -23,6 +22,37 @@ const CheckIcon = ({ className }: { className?: string }) => (
 )
 
 export const PricingSection = () => {
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const startCheckout = async (plan: 'basic' | 'plus' | 'vip') => {
+    try {
+      setErrorMessage(null)
+      setLoadingPlan(plan)
+
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, planName: plan }),
+      })
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        throw new Error(text || 'Falha ao iniciar pagamento')
+      }
+
+      const data = (await res.json()) as { url?: string }
+      if (!data?.url) {
+        throw new Error('Checkout do Stripe não retornou URL')
+      }
+
+      window.location.href = data.url
+    } catch (e: any) {
+      setErrorMessage(e?.message || 'Não foi possível iniciar o pagamento. Tente novamente.')
+      setLoadingPlan(null)
+    }
+  }
+
   return (
     <section className="py-12 px-4 md:py-24 md:px-6 bg-[#FDFBF7]" id="plans">
       <div className="max-w-7xl mx-auto">
@@ -69,11 +99,13 @@ export const PricingSection = () => {
                 <CountdownTimer />
               </div>
 
-              <Link href="/register?plan=basic" className="w-full md:w-auto">
-                <Button className="w-full md:w-auto bg-yellow-400 text-red-900 hover:bg-yellow-300 hover:scale-105 transition-all font-black text-xl md:text-2xl py-8 px-10 rounded-xl shadow-xl border-b-4 border-yellow-600">
-                  Garantir Meu Plano Essencial Agora!
-                </Button>
-              </Link>
+              <Button
+                onClick={() => startCheckout('basic')}
+                disabled={loadingPlan !== null}
+                className="w-full md:w-auto bg-yellow-400 text-red-900 hover:bg-yellow-300 hover:scale-105 transition-all font-black text-xl md:text-2xl py-8 px-10 rounded-xl shadow-xl border-b-4 border-yellow-600"
+              >
+                {loadingPlan === 'basic' ? 'Abrindo checkout…' : 'Garantir Meu Plano Essencial Agora!'}
+              </Button>
               
               <p className="text-xs md:text-sm text-white/70 opacity-80">
                 *Oferta válida por tempo limitado ou até esgotarem as vagas.
@@ -102,6 +134,12 @@ export const PricingSection = () => {
 
         {/* PLANS GRID */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 max-w-6xl mx-auto items-start">
+
+          {errorMessage && (
+            <div className="md:col-span-3 bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm font-medium">
+              {errorMessage}
+            </div>
+          )}
           
           {/* PLANO ESSENCIAL (BÁSICO) */}
           <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden flex flex-col hover:shadow-2xl transition-shadow duration-300 h-full relative group">
@@ -141,11 +179,14 @@ export const PricingSection = () => {
             </div>
             
             <div className="p-6 bg-gray-50 border-t border-gray-100 mt-auto">
-              <Link href="/register?plan=basic" className="block">
-                <Button variant="outline" className="w-full py-6 text-lg font-bold border-2 border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-900 hover:border-gray-400 transition-all rounded-xl">
-                  Escolher Plano Essencial
-                </Button>
-              </Link>
+              <Button
+                onClick={() => startCheckout('basic')}
+                disabled={loadingPlan !== null}
+                variant="outline"
+                className="w-full py-6 text-lg font-bold border-2 border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-900 hover:border-gray-400 transition-all rounded-xl"
+              >
+                {loadingPlan === 'basic' ? 'Abrindo checkout…' : 'Escolher Plano Essencial'}
+              </Button>
             </div>
           </div>
 
@@ -204,11 +245,13 @@ export const PricingSection = () => {
             </div>
             
             <div className="p-6 bg-orange-50/50 mt-auto border-t border-orange-100">
-              <Link href="/register?plan=plus" className="block">
-                <Button className="w-full py-8 text-xl font-black bg-[#FF4D4D] hover:bg-[#e63e3e] text-white shadow-xl shadow-orange-200 hover:shadow-orange-300 transition-all transform hover:scale-[1.02] rounded-xl border-b-4 border-[#cc0000]">
-                  Escolher Plano Evolução
-                </Button>
-              </Link>
+              <Button
+                onClick={() => startCheckout('plus')}
+                disabled={loadingPlan !== null}
+                className="w-full py-8 text-xl font-black bg-[#FF4D4D] hover:bg-[#e63e3e] text-white shadow-xl shadow-orange-200 hover:shadow-orange-300 transition-all transform hover:scale-[1.02] rounded-xl border-b-4 border-[#cc0000]"
+              >
+                {loadingPlan === 'plus' ? 'Abrindo checkout…' : 'Escolher Plano Evolução'}
+              </Button>
             </div>
           </div>
 
@@ -256,11 +299,14 @@ export const PricingSection = () => {
             </div>
             
             <div className="p-6 bg-gray-50 border-t border-gray-100 mt-auto">
-              <Link href="/register?plan=vip" className="block">
-                <Button variant="outline" className="w-full py-6 text-lg font-bold border-2 border-purple-200 text-purple-700 hover:bg-purple-50 hover:text-purple-900 hover:border-purple-300 transition-all rounded-xl">
-                  Escolher Plano Premium
-                </Button>
-              </Link>
+              <Button
+                onClick={() => startCheckout('vip')}
+                disabled={loadingPlan !== null}
+                variant="outline"
+                className="w-full py-6 text-lg font-bold border-2 border-purple-200 text-purple-700 hover:bg-purple-50 hover:text-purple-900 hover:border-purple-300 transition-all rounded-xl"
+              >
+                {loadingPlan === 'vip' ? 'Abrindo checkout…' : 'Escolher Plano Premium'}
+              </Button>
             </div>
           </div>
 
