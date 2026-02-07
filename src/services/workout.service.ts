@@ -3,21 +3,47 @@ import { createClient } from '@/lib/supabase/server'
 export async function getNextWorkoutForUser(userId: string) {
     const supabase = await createClient()
 
-    // 1. Get User Level
-    const { data: user } = await supabase.from('users').select('workout_level').eq('id', userId).single()
+    // 1. Get User Level & Progression
+    const { data: user } = await supabase.from('users').select('workout_level, last_workout_date, last_completed_workout_type').eq('id', userId).single()
     const userLevel = user?.workout_level || 'beginner'
+    const lastType = user?.last_completed_workout_type
+    const lastDate = user?.last_workout_date
 
-    // 2. Determine Rotation based on Day of Year (Deterministic for "Workout of the Day")
-    // This ensures it changes every 24h regardless of completion
-    const now = new Date()
-    const startOfYear = new Date(now.getFullYear(), 0, 0)
-    const diffMs = now.getTime() - startOfYear.getTime()
-    const oneDayMs = 1000 * 60 * 60 * 24
-    const dayOfYear = Math.floor(diffMs / oneDayMs)
+    // 2. Determine Next Workout Type (User-Specific Sequence ABC)
+    // Sequence: A -> B -> C -> A ...
+    // If no last workout (new user), start with A.
+    // If user missed days, we pick up where left off (Continuous).
     
-    // Rotation Sequence: A -> B -> C
-    const types = ['A', 'B', 'C'] as const
-    const nextType = types[dayOfYear % 3]
+    let nextType = 'A' // Default for new users
+    
+    if (lastType) {
+        // If user has a history, calculate next in sequence
+        if (lastType === 'A') nextType = 'B'
+        else if (lastType === 'B') nextType = 'C'
+        else if (lastType === 'C') nextType = 'A'
+        
+        // Check if today is the SAME day as last completed workout?
+        // Req: "Reset Daily... at 00:00". 
+        // If user already did a workout TODAY, they should see the SAME workout as "Completed" 
+        // OR the next one but locked? 
+        // Usually "Workout of the Day" implies 1 per day.
+        // If they completed 'A' today, showing 'B' immediately might be aggressive or good?
+        // Req says: "If user concluded workout 'A' and didn't train next day... next available MUST be 'B'".
+        // It implies 1 active workout "slot" that moves forward only when completed AND it's a new day?
+        // Or moves forward immediately upon completion?
+        // "A 'virada do dia'... deve ocorrer à 00:00... Após essa hora, se o usuário completou... o próximo... se torna disponível."
+        // So: If completed today, wait for tomorrow to show next.
+        
+        const today = new Date().toISOString().split('T')[0]
+        const lastWorkoutDay = lastDate ? new Date(lastDate).toISOString().split('T')[0] : null
+        
+        if (lastWorkoutDay === today) {
+            // User already worked out today. 
+            // We should return the workout they JUST did (so they can see it's done), 
+            // NOT the next one yet.
+            nextType = lastType 
+        }
+    }
 
     // 3. Fetch the Workout
     const { data: workout } = await supabase
@@ -25,13 +51,13 @@ export async function getNextWorkoutForUser(userId: string) {
         .select('*')
         .eq('level', userLevel)
         .eq('type', nextType)
-        .eq('is_active', true)
+        .eq('is_active', true) 
         .maybeSingle()
 
     // 4. Return Placeholder if no workout exists in DB (Critical Fix)
     if (!workout) {
         // Try to find ANY active workout for this level to avoid 404
-        const { data: fallbackWorkout } = await supabase
+         const { data: fallbackWorkout } = await supabase
             .from('workouts')
             .select('*')
             .eq('level', userLevel)
@@ -39,7 +65,7 @@ export async function getNextWorkoutForUser(userId: string) {
             .limit(1)
             .maybeSingle()
         
-        if (fallbackWorkout) return fallbackWorkout
+        if (fallbackWorkout) return fallbackWorkout;
 
         return {
             id: 'placeholder-config',

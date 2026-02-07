@@ -59,19 +59,23 @@ export async function addWater(userId: string, bottleSizeMl: number, dailyGoalMl
 
   // 4. Log XP if earned
   if (xpEarned > 0) {
-      // Add XP to user_stats (or users if total_xp is there, checking schema... users has total_xp?)
-      // Wait, schema shows users has no total_xp column in previous turn.
-      // But user_stats table exists and has total_xp.
-      // Let's update user_stats.
+      // Add XP to user_stats AND users table (syncing both for safety/migration)
       
+      // Update users table (Primary requirement)
+      // We first fetch current XP to increment safely if RPC not available for users table
+      const { data: user } = await supabase.from('users').select('total_xp').eq('id', userId).single()
+      if (user) {
+          const currentXp = user.total_xp || 0
+          await supabase.from('users').update({ total_xp: currentXp + xpEarned }).eq('id', userId)
+      }
+
+      // Keep user_stats in sync (Legacy/Secondary)
       const { error: statsError } = await supabase.rpc('increment_user_xp', { 
           x_user_id: userId, 
           x_amount: xpEarned 
       })
       
-      // Fallback if RPC doesn't exist (it should, but safety first or manual update)
       if (statsError) {
-          // Manual update
           const { data: stats } = await supabase.from('user_stats').select('total_xp').eq('user_id', userId).single()
           if (stats) {
               await supabase.from('user_stats').update({ total_xp: (stats.total_xp || 0) + xpEarned }).eq('user_id', userId)
@@ -183,6 +187,17 @@ export async function toggleMeal(userId: string, mealIndex: number, isCompleted:
 
   // Update User Total XP
   if (xpEarned !== 0) {
+      // Update users table (Primary requirement)
+      const { data: user } = await supabase.from('users').select('total_xp').eq('id', userId).single()
+      if (user) {
+          const currentXp = user.total_xp || 0
+          // Allow negative xp (decrement) but usually prevent going below 0? 
+          // Req: "total_xp of user MUST be decremented".
+          const newTotal = Math.max(0, currentXp + xpEarned)
+          await supabase.from('users').update({ total_xp: newTotal }).eq('id', userId)
+      }
+
+      // Update user_stats (Legacy/Sync)
       const { error: statsError } = await supabase.rpc('increment_user_xp', { 
           x_user_id: userId, 
           x_amount: xpEarned 
