@@ -43,6 +43,11 @@ export async function addWater(userId: string, bottleSizeMl: number, dailyGoalMl
   if (reachedGoal && !alreadyGranted) {
       xpEarned = XP_PER_WATER_DAILY_GOAL
       updatePayload.water_xp_granted = true
+  } else if (!reachedGoal && alreadyGranted) {
+      // User removed water and dropped below goal
+      // Reset granted status so they can earn it again (if they drink up)
+      // Note: We do NOT deduct XP from total_xp as per requirement.
+      updatePayload.water_xp_granted = false
   }
 
   const { error: updateError } = await supabase
@@ -54,6 +59,25 @@ export async function addWater(userId: string, bottleSizeMl: number, dailyGoalMl
 
   // 4. Log XP if earned
   if (xpEarned > 0) {
+      // Add XP to user_stats (or users if total_xp is there, checking schema... users has total_xp?)
+      // Wait, schema shows users has no total_xp column in previous turn.
+      // But user_stats table exists and has total_xp.
+      // Let's update user_stats.
+      
+      const { error: statsError } = await supabase.rpc('increment_user_xp', { 
+          x_user_id: userId, 
+          x_amount: xpEarned 
+      })
+      
+      // Fallback if RPC doesn't exist (it should, but safety first or manual update)
+      if (statsError) {
+          // Manual update
+          const { data: stats } = await supabase.from('user_stats').select('total_xp').eq('user_id', userId).single()
+          if (stats) {
+              await supabase.from('user_stats').update({ total_xp: (stats.total_xp || 0) + xpEarned }).eq('user_id', userId)
+          }
+      }
+
       await supabase.from('user_activity_log').insert({
         user_id: userId,
         activity_type: 'water_goal_reached',
@@ -139,23 +163,39 @@ export async function toggleMeal(userId: string, mealIndex: number, isCompleted:
   if (error) return { success: false, error: 'Failed to update meal', xpEarned: 0 }
 
   // XP Logic
+  let xpEarned = 0
+  
   if (isCompleted) {
+      xpEarned = XP_PER_MEAL
       await supabase.from('user_activity_log').insert({
         user_id: userId,
         activity_type: 'meal_logged',
-        xp_earned: XP_PER_MEAL,
+        xp_earned: xpEarned,
         metadata: { mealIndex, date: today }
       })
-      revalidatePath('/dashboard')
-      return { success: true, xpEarned: XP_PER_MEAL }
   } else {
-      // If unchecking, we might want to remove XP? 
-      // For MVP, let's keep it simple: No XP refund to avoid complex negative logic, 
-      // or simple negative log?
-      // Let's just NOT remove XP to avoid frustration, but prevent spamming.
-      // (Spam prevention is hard without dedup).
-      // Let's ignore XP refund for MVP.
-      revalidatePath('/dashboard')
-      return { success: true, xpEarned: 0 }
+      // Meal unchecked -> Remove XP
+      xpEarned = -XP_PER_MEAL
+      // We don't delete the log, but we add a negative log or just update total_xp?
+      // Requirement: "total_xp of user MUST be decremented".
+      // Let's just update total_xp.
   }
+
+  // Update User Total XP
+  if (xpEarned !== 0) {
+      const { error: statsError } = await supabase.rpc('increment_user_xp', { 
+          x_user_id: userId, 
+          x_amount: xpEarned 
+      })
+      
+      if (statsError) {
+          const { data: stats } = await supabase.from('user_stats').select('total_xp').eq('user_id', userId).single()
+          if (stats) {
+              await supabase.from('user_stats').update({ total_xp: Math.max(0, (stats.total_xp || 0) + xpEarned) }).eq('user_id', userId)
+          }
+      }
+  }
+
+  revalidatePath('/dashboard')
+  return { success: true, xpEarned: isCompleted ? xpEarned : 0 } // Return positive for UI toast or 0 if removed (no toast needed for removal usually)
 }

@@ -70,15 +70,37 @@ export function WaterTracker({ userId, currentAmount, weight = 70, bottleSize = 
         
         <Progress value={percentage} className="h-2 bg-blue-100 [&>div]:bg-blue-500" />
         
-        <Button 
-            onClick={handleAddWater} 
-            disabled={isPending}
-            variant="outline" 
-            className="w-full border-blue-200 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
-        >
-            <Plus className="h-4 w-4 mr-2" />
-            + 1 Garrafa ({bottleSize}ml)
-        </Button>
+        <div className="flex gap-2">
+            <Button 
+                onClick={() => {
+                    // Logic to remove water
+                    // We need a server action for this or modify addWater to accept negative
+                    // Let's modify addWater to handle negative in next step or use separate
+                    // Since I can't easily add a prop to addWater without breaking signature?
+                    // addWater(userId, -bottleSize, dailyGoal) works if bottleSize is just amount.
+                    // Wait, logic in addWater: newAmount = current + bottleSize. So negative works.
+                    const newAmount = Math.max(0, amount - bottleSize)
+                    setAmount(newAmount)
+                    startTransition(async () => {
+                        await addWater(userId, -bottleSize, dailyGoal)
+                    })
+                }} 
+                disabled={isPending || amount <= 0}
+                variant="outline" 
+                className="flex-1 border-blue-200 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+            >
+                -
+            </Button>
+            <Button 
+                onClick={handleAddWater} 
+                disabled={isPending || amount >= dailyGoal} 
+                variant="outline" 
+                className="flex-[3] border-blue-200 text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+            >
+                <Plus className="h-4 w-4 mr-2" />
+                + 1 Garrafa ({bottleSize}ml)
+            </Button>
+        </div>
       </CardContent>
     </Card>
   )
