@@ -2,20 +2,10 @@ import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createCheckoutSession } from '@/services/stripe'
+import { stripe } from '@/lib/stripe/config'
+import { getPriceIdForPlan, isPlanKey } from '@/lib/stripe/prices'
 
 export const dynamic = 'force-dynamic'
-
-const PRICE_IDS = {
-  basic: 'price_1SjR0fGigUIifkMigDDhf5pv',
-  plus: 'price_1SjR1vGigUIifkMib6IHcTak',
-  vip: 'price_1SyI7SGigUIifkMizfRzNT4V',
-} as const
-
-type PlanKey = keyof typeof PRICE_IDS
-
-function isPlanKey(value: string): value is PlanKey {
-  return value === 'basic' || value === 'plus' || value === 'vip'
-}
 
 async function getRequestOrigin() {
   const h = await headers()
@@ -84,14 +74,31 @@ export default async function CheckoutPage({
     data: { user },
   } = await supabase.auth.getUser()
 
+  if (!user) {
+    redirect(`/register?plan=${plan}`)
+  }
+
   try {
+    const { data: profile } = await supabase.from('users').select('stripe_customer_id').eq('id', user.id).single()
+
+    let customerId = profile?.stripe_customer_id as string | null | undefined
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email ?? undefined,
+        metadata: { userId: user.id },
+      })
+      customerId = customer.id
+      await supabase.from('users').update({ stripe_customer_id: customerId }).eq('id', user.id)
+    }
+
     const { url } = await createCheckoutSession({
-      priceId: PRICE_IDS[plan],
-      userId: user?.id || 'anonymous',
-      userEmail: user?.email,
+      priceId: getPriceIdForPlan(plan),
+      userId: user.id,
+      userEmail: user.email ?? undefined,
       planName: plan,
       successUrl,
       cancelUrl,
+      customerId: customerId ?? undefined,
     })
 
     if (!url) {
@@ -109,7 +116,18 @@ export default async function CheckoutPage({
       )
     }
 
-    redirect(url)
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
+        <h1 className="text-2xl font-bold">Quase lá!</h1>
+        <p className="mt-2 text-gray-600">Clique abaixo para finalizar seu pagamento no Stripe.</p>
+        <a
+          href={url}
+          className="mt-6 inline-flex items-center justify-center rounded-lg bg-[#FF4D4D] px-6 py-3 text-white font-bold text-lg hover:bg-[#e63e3e] transition-colors"
+        >
+          Pagar Agora
+        </a>
+      </div>
+    )
   } catch (error) {
     console.error('[CHECKOUT] erro ao criar sessão', error)
     return (

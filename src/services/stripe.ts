@@ -7,6 +7,7 @@ interface CreateCheckoutSessionParams {
   planName?: string;
   successUrl?: string;
   cancelUrl?: string;
+  customerId?: string;
 }
 
 export async function createCheckoutSession({
@@ -16,6 +17,7 @@ export async function createCheckoutSession({
   planName,
   successUrl,
   cancelUrl,
+  customerId,
 }: CreateCheckoutSessionParams) {
   try {
     const session = await stripe.checkout.sessions.create({
@@ -29,7 +31,7 @@ export async function createCheckoutSession({
       ],
       success_url: successUrl || `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
       cancel_url: cancelUrl || `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?canceled=true`,
-      customer_email: userEmail,
+      ...(customerId ? { customer: customerId } : { customer_email: userEmail }),
       metadata: {
         userId,
         planName: planName || '',

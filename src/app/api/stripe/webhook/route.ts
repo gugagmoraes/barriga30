@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe/config';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin'
 import Stripe from 'stripe';
-
-// This is your Stripe CLI webhook secret for testing your endpoint locally.
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+import { getPlanFromPriceId, isPlanKey, getWebhookSecret, type PlanKey } from '@/lib/stripe/prices'
 
 export async function POST(req: NextRequest) {
   const body = await req.text();
@@ -13,66 +11,80 @@ export async function POST(req: NextRequest) {
   let event: Stripe.Event;
 
   try {
-    if (!webhookSecret) throw new Error('Stripe webhook secret not set');
-    event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+    event = stripe.webhooks.constructEvent(body, sig, getWebhookSecret());
   } catch (err: any) {
     console.error(`Webhook signature verification failed.`, err.message);
     return new NextResponse(`Webhook Error: ${err.message}`, { status: 400 });
   }
 
-  const supabase = await createClient();
+  const admin = createAdminClient()
+  if (!admin) return new NextResponse('Server misconfigured', { status: 500 })
 
   try {
     switch (event.type) {
-      case 'checkout.session.completed':
+      case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        // Retrieve the subscription details from Stripe.
-        const subscriptionId = session.subscription as string;
+        const subscriptionId = session.subscription as string | null;
         const userId = session.metadata?.userId;
         const planName = session.metadata?.planName;
 
-        if (userId && subscriptionId) {
-           // Update user's subscription in Supabase
-           // 1. Find the plan ID based on planName or price ID? 
-           // For MVP let's assume we store the plan in metadata or lookup by price.
-           // Ideally we query the 'plans' table.
-           
-           // We need to fetch the plan_id from the 'plans' table based on the price ID or name
-           // But here we might not have easy access to price ID in session object directly without expansion?
-           // Session has line_items if expanded, or we can use the planName passed in metadata.
-           
-           let planId;
-           if (planName) {
-               const { data: plan } = await supabase.from('plans').select('id').ilike('name', planName).single();
-               planId = plan?.id;
-           }
+        if (!userId || !subscriptionId) break
 
-           // Insert into subscriptions table
-           if (planId) {
-               await supabase.from('subscriptions').insert({
-                   user_id: userId,
-                   plan_id: planId,
-                   stripe_subscription_id: subscriptionId,
-                   status: 'active',
-                   current_period_start: new Date().toISOString(), // Approximation, real dates come from subscription object
-                   current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-               });
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+          expand: ['items.data.price'],
+        })
 
-               // Also update users table status/level if needed
-               // e.g. set level based on plan? Or just unlock features.
-           }
+        const priceId = subscription.items.data[0]?.price?.id
+        const planFromPrice = priceId ? getPlanFromPriceId(priceId) : null
+
+        const plan: PlanKey =
+          (isPlanKey(planName) ? (planName as PlanKey) : null) ||
+          planFromPrice ||
+          'basic'
+
+        if (subscription.status === 'active' || subscription.status === 'trialing') {
+          const currentPeriodEnd = (subscription as any).current_period_end as number | undefined
+          await admin.from('users').update({
+            plan_type: plan,
+            stripe_customer_id: typeof subscription.customer === 'string' ? subscription.customer : null,
+            stripe_subscription_id: subscription.id,
+            stripe_subscription_status: subscription.status,
+            stripe_current_period_end: currentPeriodEnd ? new Date(currentPeriodEnd * 1000).toISOString() : null,
+          }).eq('id', userId)
         }
         break;
+      }
       
       case 'customer.subscription.updated':
-      case 'customer.subscription.deleted':
+      case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
         const status = subscription.status;
-        
-        await supabase.from('subscriptions')
-            .update({ status: status })
-            .eq('stripe_subscription_id', subscription.id);
+
+        const customerId = typeof subscription.customer === 'string' ? subscription.customer : null
+        if (!customerId) break
+
+        const { data: user } = await admin.from('users').select('id').eq('stripe_customer_id', customerId).maybeSingle()
+        if (!user?.id) break
+
+        if (status === 'active' || status === 'trialing') {
+          const currentPeriodEnd = (subscription as any).current_period_end as number | undefined
+          await admin.from('users').update({
+            stripe_subscription_id: subscription.id,
+            stripe_subscription_status: status,
+            stripe_current_period_end: currentPeriodEnd ? new Date(currentPeriodEnd * 1000).toISOString() : null,
+          }).eq('id', user.id)
+          break
+        }
+
+        const currentPeriodEnd = (subscription as any).current_period_end as number | undefined
+        await admin.from('users').update({
+          plan_type: 'basic',
+          stripe_subscription_id: subscription.id,
+          stripe_subscription_status: status,
+          stripe_current_period_end: currentPeriodEnd ? new Date(currentPeriodEnd * 1000).toISOString() : null,
+        }).eq('id', user.id)
         break;
+      }
 
       default:
         // console.log(`Unhandled event type ${event.type}`);

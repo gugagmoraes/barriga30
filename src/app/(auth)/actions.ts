@@ -69,7 +69,8 @@ export async function signup(prevState: any, formData: FormData) {
   }
 
   const { email, password, name, plan } = validation.data
-  const planType = (plan ? plan.toLowerCase() : 'basic') as PlanType
+  const selectedPlan = (plan ? plan.toLowerCase() : 'basic') as PlanType
+  const planType: PlanType = 'basic'
 
   const supabase = await createClient()
 
@@ -79,7 +80,7 @@ export async function signup(prevState: any, formData: FormData) {
     options: {
       data: {
         name,
-        plan_type: planType, // Stores in auth.users metadata
+        plan_type: planType,
       },
     },
   })
@@ -99,7 +100,7 @@ export async function signup(prevState: any, formData: FormData) {
         id: authData.user.id,
         email: email,
         name: name,
-        plan_type: planType
+        plan_type: planType,
     })
 
     if (insertError) {
@@ -139,7 +140,7 @@ export async function signup(prevState: any, formData: FormData) {
   }
 
   // Se um plano foi selecionado, criar sessão do Stripe
-  if (plan && authData.user) {
+  if (selectedPlan && selectedPlan !== 'basic' && authData.user) {
     // TODO: Usar IDs reais do Stripe em produção
     const priceMap: Record<string, string> = {
         'basic': 'price_1SjR0fGigUIifkMigDDhf5pv', 
@@ -147,7 +148,7 @@ export async function signup(prevState: any, formData: FormData) {
         'vip': 'price_1SyI7SGigUIifkMizfRzNT4V'
     }
 
-    const priceId = priceMap[plan.toLowerCase()]
+    const priceId = priceMap[selectedPlan]
 
     if (priceId) {
       // WARNING: This will fail if using placeholder IDs. Ensure valid Stripe Price IDs are used.
@@ -161,7 +162,7 @@ export async function signup(prevState: any, formData: FormData) {
             priceId,
             userId: authData.user.id,
             userEmail: email,
-            planName: plan
+            planName: selectedPlan,
           });
           
           if (url) {

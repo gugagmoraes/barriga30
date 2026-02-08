@@ -88,7 +88,7 @@ export default async function WorkoutsPage() {
                             <p className="font-bold text-gray-900 text-sm mb-1">Nível Bloqueado</p>
                             <p className="text-xs text-gray-600 mb-3">Faça Upgrade para Desbloquear!</p>
                             <div className="pointer-events-auto">
-                                <Link href="/register?plan=plus">
+                                <Link href="/checkout/plus">
                                     <span className="inline-block bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs font-bold px-4 py-2 rounded-full hover:shadow-md transition-all cursor-pointer">
                                         Ser Plus
                                     </span>

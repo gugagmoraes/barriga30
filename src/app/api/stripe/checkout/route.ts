@@ -1,18 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createCheckoutSession } from '@/services/stripe';
-
-const PRICE_IDS = {
-  basic: 'price_1SjR0fGigUIifkMigDDhf5pv',
-  plus: 'price_1SjR1vGigUIifkMib6IHcTak',
-  vip: 'price_1SyI7SGigUIifkMizfRzNT4V',
-} as const;
-
-type PlanKey = keyof typeof PRICE_IDS;
-
-function isPlanKey(value: unknown): value is PlanKey {
-  return value === 'basic' || value === 'plus' || value === 'vip';
-}
+import { stripe } from '@/lib/stripe/config'
+import { getAppUrlFromEnvOrRequestOrigin, getPriceIdForPlan, isPlanKey, type PlanKey } from '@/lib/stripe/prices'
 
 function getRequestOrigin(req: NextRequest) {
   const url = new URL(req.url);
@@ -26,18 +16,13 @@ export async function POST(req: NextRequest) {
     const planName = typeof body?.planName === 'string' ? body.planName : (plan || '');
 
     const priceIdFromBody = typeof body?.priceId === 'string' ? body.priceId : null;
-    const priceId = plan ? PRICE_IDS[plan] : priceIdFromBody;
+    const priceId = plan ? getPriceIdForPlan(plan) : priceIdFromBody;
 
     if (!priceId) {
       return new NextResponse('Missing plan/priceId', { status: 400 });
     }
 
-    const allowedPriceIds = new Set(Object.values(PRICE_IDS));
-    if (!allowedPriceIds.has(priceId)) {
-      return new NextResponse('Invalid priceId', { status: 400 });
-    }
-
-    const origin = process.env.NEXT_PUBLIC_APP_URL || getRequestOrigin(req);
+    const origin = getAppUrlFromEnvOrRequestOrigin(getRequestOrigin(req));
 
     const successUrl = process.env.NEXT_PUBLIC_STRIPE_SUCCESS_URL
       ? process.env.NEXT_PUBLIC_STRIPE_SUCCESS_URL
@@ -50,13 +35,30 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
+    if (!user) {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
+
+    const { data: profile } = await supabase.from('users').select('stripe_customer_id').eq('id', user.id).single()
+    let customerId = profile?.stripe_customer_id as string | null | undefined
+
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email ?? undefined,
+        metadata: { userId: user.id },
+      })
+      customerId = customer.id
+      await supabase.from('users').update({ stripe_customer_id: customerId }).eq('id', user.id)
+    }
+
     const { sessionId, url } = await createCheckoutSession({
       priceId,
-      userId: user?.id || 'anonymous',
-      userEmail: user?.email,
+      userId: user.id,
+      userEmail: user.email ?? undefined,
       planName,
       successUrl,
       cancelUrl,
+      customerId: customerId ?? undefined,
     });
 
     return NextResponse.json({ sessionId, url });

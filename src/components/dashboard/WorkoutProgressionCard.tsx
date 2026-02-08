@@ -131,7 +131,7 @@ export function WorkoutProgressionCard({ status, isCriticalMode, plan }: Progres
                             Você dominou o Intermediário! Para acessar treinos de elite, faça o upgrade do seu plano.
                         </p>
                     </div>
-                    <Link href="/register?plan=plus" className="w-full">
+                    <Link href="/checkout/plus" className="w-full">
                         <Button variant="default" className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 border-0">
                             Desbloquear Agora
                         </Button>

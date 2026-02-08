@@ -13,7 +13,7 @@ export default function UpgradePage() {
         A opção de fazer uma versão mais leve do treino está disponível nos planos Plus e VIP.
         Faça upgrade para ter acesso a variações e treinos de todos os níveis.
       </p>
-      <Link href="/register?plan=plus">
+      <Link href="/checkout/plus">
         <Button className="bg-gradient-to-r from-yellow-500 to-orange-500 border-0 font-bold">
           Fazer Upgrade
         </Button>
@@ -26,4 +26,3 @@ export default function UpgradePage() {
     </div>
   )
 }
-
