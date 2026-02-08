@@ -1,4 +1,4 @@
-import { redirect, isRedirectError } from 'next/navigation'
+import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createCheckoutSession } from '@/services/stripe'
@@ -117,8 +117,8 @@ export default async function CheckoutPage({
     }
 
     redirect(url)
-  } catch (error) {
-    if (isRedirectError(error)) {
+  } catch (error: any) {
+    if (error?.digest?.startsWith('NEXT_REDIRECT')) {
       throw error
     }
     console.error('[CHECKOUT] erro ao criar sessão', error)
