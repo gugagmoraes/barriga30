@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { isRedirectError } from 'next/dist/client/components/redirect'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createCheckoutSession } from '@/services/stripe'
@@ -116,19 +117,11 @@ export default async function CheckoutPage({
       )
     }
 
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
-        <h1 className="text-2xl font-bold">Quase lá!</h1>
-        <p className="mt-2 text-gray-600">Clique abaixo para finalizar seu pagamento no Stripe.</p>
-        <a
-          href={url}
-          className="mt-6 inline-flex items-center justify-center rounded-lg bg-[#FF4D4D] px-6 py-3 text-white font-bold text-lg hover:bg-[#e63e3e] transition-colors"
-        >
-          Pagar Agora
-        </a>
-      </div>
-    )
+    redirect(url)
   } catch (error) {
+    if (isRedirectError(error)) {
+      throw error
+    }
     console.error('[CHECKOUT] erro ao criar sessão', error)
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
