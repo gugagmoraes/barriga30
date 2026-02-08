@@ -1,5 +1,4 @@
-import { redirect } from 'next/navigation'
-import { isRedirectError } from 'next/dist/client/components/redirect'
+import { redirect, isRedirectError } from 'next/navigation'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createCheckoutSession } from '@/services/stripe'
