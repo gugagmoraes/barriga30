@@ -61,10 +61,18 @@ export default function WorkoutPlayer({
 
         try {
             const parsed = new URL(rawUrl)
+            // Support both direct embed URLs and iframe src format from Bunny
             if (parsed.hostname.endsWith('mediadelivery.net') && parsed.pathname.startsWith('/embed/')) {
-                parsed.searchParams.set('autoplay', isPlaying ? 'true' : 'false')
-                parsed.searchParams.set('v', workout.id)
-                return parsed.toString()
+                // Keep the original URL mostly intact, just append autoplay if needed
+                // IMPORTANT: Do NOT strip existing parameters or change the path structure randomly
+                // Bunny.net iframe embeds usually look like: https://iframe.mediadelivery.net/embed/{libraryId}/{videoId}
+                // or https://player.mediadelivery.net/embed/...
+                
+                // Let's just return it as is for the iframe src, maybe adding autoplay param
+                const newUrl = new URL(rawUrl)
+                newUrl.searchParams.set('autoplay', isPlaying ? 'true' : 'false')
+                // newUrl.searchParams.set('v', workout.id) // This might be breaking it if Bunny doesn't expect 'v'
+                return newUrl.toString()
             }
         } catch {}
 
