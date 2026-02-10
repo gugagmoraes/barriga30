@@ -121,7 +121,7 @@ export default function LandingPage() {
                 <div className="aspect-video w-full bg-black rounded-lg md:rounded-xl overflow-hidden shadow-2xl">
                   <div style={{ position: 'relative', paddingTop: '56.25%' }}>
                     <iframe 
-                      src="https://player.mediadelivery.net/embed/586050/dbe465da-c11b-41d0-9b92-15ea856a65a3?autoplay=false&loop=false&muted=false&preload=false&responsive=true" 
+                      src="https://player.mediadelivery.net/embed/596490/746244f1-7ff6-41e2-b101-634ee90d0d0b?autoplay=false&loop=false&muted=false&preload=false&responsive=true" 
                       loading="lazy" 
                       style={{ border: 0, position: 'absolute', top: 0, height: '100%', width: '100%' }} 
                       allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;" 
