@@ -118,19 +118,18 @@ export default async function WorkoutsPage() {
                     </div>
                 )}
 
-                <div className="bg-gray-100 relative">
+                <div className="bg-gray-100 relative aspect-video w-full">
                   {isValidFullEmbedUrl(workout.video_url) ? (
                     <iframe
                       src={normalizeBunnyEmbedUrl(workout.video_url) || workout.video_url}
-                      width="100%"
-                      height="315px"
-                      style={{ border: 0, borderRadius: 12 }}
+                      className="absolute inset-0 w-full h-full"
+                      style={{ border: 0 }}
                       loading="lazy"
                       allow="autoplay; encrypted-media; picture-in-picture; clipboard-write; web-share"
                       allowFullScreen
                     />
                   ) : (
-                    <div className="h-[315px] flex flex-col items-center justify-center text-center px-4">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
                       <PlayCircle className="h-12 w-12 text-gray-300 mb-3" />
                       <p className="text-sm text-gray-500">Vídeo indisponível no momento</p>
                     </div>
