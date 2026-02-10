@@ -73,7 +73,14 @@ const CarouselPlaceholder = ({ title, subtitle, items, caption }: { title: strin
 
 import { PricingSection } from '@/components/landing/PricingSection'
 
-export default function LandingPage() {
+  const scrollToPlans = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault()
+    const plansSection = document.getElementById('plans')
+    if (plansSection) {
+      plansSection.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
+
   return (
     <div className="min-h-screen bg-white font-sans text-gray-900 overflow-x-hidden">
       {/* Header / Logo */}
@@ -162,11 +169,11 @@ export default function LandingPage() {
 
             {/* CTA Button */}
             <div className="pt-2 px-2 w-full max-w-md mx-auto md:max-w-none">
-               <Link href="#plans" className="block w-full">
+               <a href="#plans" onClick={scrollToPlans} className="block w-full">
                 <Button className="w-full md:w-auto text-lg md:text-2xl font-black py-8 md:py-10 px-8 md:px-16 rounded-2xl shadow-[0_10px_40px_-10px_rgba(255,77,77,0.6)] bg-[#FF4D4D] hover:bg-[#ff3333] text-white transform hover:scale-[1.02] active:scale-95 transition-all duration-300 border-b-4 border-[#cc0000] whitespace-normal h-auto leading-tight uppercase tracking-wide">
                   QUERO SECAR MINHA BARRIGA EM 30 DIAS
                 </Button>
-               </Link>
+               </a>
             </div>
 
             {/* Frase Âncora 1 */}
@@ -778,11 +785,11 @@ export default function LandingPage() {
               <p className="text-white/90 font-medium text-lg md:text-xl mt-1">Porque você é imagem e semelhança de Deus.</p>
             </div>
 
-            <Link href="#plans" className="block mt-8">
-               <Button className="bg-white text-[#FF4D4D] hover:bg-gray-100 font-bold px-10 py-8 rounded-full text-xl shadow-xl transform hover:scale-105 transition-all w-full md:w-auto">
+            <a href="#plans" onClick={scrollToPlans} className="block mt-8">
+               <Button className="bg-white text-[#FF4D4D] hover:bg-gray-100 font-bold px-10 py-8 rounded-full text-xl shadow-xl transform hover:scale-105 transition-all w-full md:w-auto h-auto whitespace-normal leading-tight">
                  QUERO SECAR MINHA BARRIGA EM 30 DIAS
                </Button>
-            </Link>
+            </a>
           </div>
         </section>
       </main>

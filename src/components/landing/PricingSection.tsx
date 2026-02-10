@@ -22,7 +22,14 @@ const CheckIcon = ({ className }: { className?: string }) => (
   </svg>
 )
 
-export const PricingSection = () => {
+  const scrollToPlans = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault()
+    const plansSection = document.getElementById('plans')
+    if (plansSection) {
+      plansSection.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
+
   return (
     <section className="py-12 px-4 md:py-24 md:px-6 bg-[#FDFBF7]" id="plans">
       <div className="max-w-7xl mx-auto">
@@ -69,12 +76,13 @@ export const PricingSection = () => {
                 <CountdownTimer />
               </div>
 
-              <Link
-                href="/checkout/basic"
-                className="w-full md:w-auto inline-flex items-center justify-center whitespace-nowrap rounded-xl text-xl md:text-2xl font-black transition-all disabled:pointer-events-none disabled:opacity-50 bg-yellow-400 text-red-900 hover:bg-yellow-300 hover:scale-105 py-8 px-10 shadow-xl border-b-4 border-yellow-600"
+              <a
+                href="#plans"
+                onClick={scrollToPlans}
+                className="w-full md:w-auto inline-flex items-center justify-center text-center whitespace-normal rounded-xl text-lg md:text-2xl font-black transition-all disabled:pointer-events-none disabled:opacity-50 bg-yellow-400 text-red-900 hover:bg-yellow-300 hover:scale-105 py-6 px-8 md:py-8 md:px-10 shadow-xl border-b-4 border-yellow-600 leading-tight"
               >
                 Garantir Meu Plano Essencial Agora!
-              </Link>
+              </a>
               
               <p className="text-xs md:text-sm text-white/70 opacity-80">
                 *Oferta válida por tempo limitado ou até esgotarem as vagas.
