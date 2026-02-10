@@ -73,6 +73,7 @@ const CarouselPlaceholder = ({ title, subtitle, items, caption }: { title: strin
 
 import { PricingSection } from '@/components/landing/PricingSection'
 
+export default function LandingPage() {
   const scrollToPlans = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault()
     const plansSection = document.getElementById('plans')
