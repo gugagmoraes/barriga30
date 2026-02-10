@@ -22,6 +22,7 @@ const CheckIcon = ({ className }: { className?: string }) => (
   </svg>
 )
 
+export const PricingSection = () => {
   const scrollToPlans = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault()
     const plansSection = document.getElementById('plans')
