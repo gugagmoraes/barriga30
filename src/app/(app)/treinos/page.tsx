@@ -54,10 +54,30 @@ export default async function WorkoutsPage() {
      }
    }
 
-  const { data: workouts } = await supabase.from('workouts').select('*').eq('is_active', true).order('created_at', { ascending: true })
+  // Fetch and sort workouts: Beginner -> Intermediate -> Advanced, then by name (A, B, C)
+  const { data: workouts } = await supabase
+    .from('workouts')
+    .select('*')
+    .eq('is_active', true)
+    
+  // Custom sorting function since Supabase order by level enum might be alphabetical (advanced first)
+  const sortedWorkouts = workouts?.sort((a, b) => {
+      const levelRank = {
+          'beginner': 1,
+          'intermediate': 2,
+          'advanced': 3
+      }
+      
+      const rankA = levelRank[a.level as keyof typeof levelRank] || 99
+      const rankB = levelRank[b.level as keyof typeof levelRank] || 99
+      
+      if (rankA !== rankB) return rankA - rankB
+      
+      return a.name.localeCompare(b.name)
+  })
 
   // If no workouts, mock some for display
-  const allWorkouts = workouts && workouts.length > 0 ? workouts : [
+  const allWorkouts = sortedWorkouts && sortedWorkouts.length > 0 ? sortedWorkouts : [
       { id: '1', name: 'Treino A - Full Body', level: 'beginner', duration_minutes: 30, video_url: '' },
       { id: '2', name: 'Treino B - Cardio Abs', level: 'beginner', duration_minutes: 25, video_url: '' },
       { id: '3', name: 'Treino C - Pernas e Glúteos', level: 'beginner', duration_minutes: 35, video_url: '' },
