@@ -32,7 +32,7 @@ export const PricingSection = () => {
   }
 
   return (
-    <section className="py-12 px-4 md:py-24 md:px-6 bg-[#FDFBF7]" id="plans">
+    <section className="py-12 px-4 md:py-24 md:px-6 bg-[#FDFBF7]">
       <div className="max-w-7xl mx-auto">
         
         {/* SECTION HEADER */}
@@ -104,7 +104,7 @@ export const PricingSection = () => {
         </div>
 
         {/* PLANS SELECTION TITLE */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-12" id="plans">
           <h3 className="text-2xl md:text-3xl font-bold text-gray-900">
             Escolha o Plano Perfeito para Sua Jornada de Transformação!
           </h3>
