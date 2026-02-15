@@ -31,7 +31,12 @@ export function UpgradeCard({ option, currentPlan, currentPrice }: UpgradeCardPr
   const handleUpgrade = async () => {
     try {
       setLoading(true)
-      await createUpgradeCheckout(option.key)
+      const result = await createUpgradeCheckout(option.key)
+      if (result.url) {
+        window.location.href = result.url
+      } else if (result.error) {
+        throw new Error(result.error)
+      }
     } catch (error: any) {
       console.error('Upgrade failed', error)
       setLoading(false)

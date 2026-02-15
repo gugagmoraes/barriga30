@@ -114,18 +114,16 @@ export async function getUpgradeDetails(): Promise<UpgradeDetails | null> {
 }
 
 export async function createUpgradeCheckout(targetPlan: PlanKey) {
-  let url: string | null = null
-
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) throw new Error('Unauthorized')
+    if (!user) return { error: 'Unauthorized' }
 
     const details = await getUpgradeDetails()
-    if (!details) throw new Error('Could not fetch details')
+    if (!details) return { error: 'Could not fetch details' }
 
     const option = details.options.find(o => o.key === targetPlan)
-    if (!option) throw new Error('Invalid upgrade option')
+    if (!option) return { error: 'Invalid upgrade option' }
 
     const { data: profile } = await supabase.from('users').select('stripe_customer_id').eq('id', user.id).single()
     
@@ -140,7 +138,7 @@ export async function createUpgradeCheckout(targetPlan: PlanKey) {
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL
-    if (!appUrl) throw new Error('Missing NEXT_PUBLIC_APP_URL')
+    if (!appUrl) return { error: 'Missing NEXT_PUBLIC_APP_URL' }
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId || undefined,
@@ -177,14 +175,12 @@ export async function createUpgradeCheckout(targetPlan: PlanKey) {
     })
 
     if (session.url) {
-      url = session.url
+      return { url: session.url }
     }
-  } catch (error) {
+    
+    return { error: 'Failed to create checkout session' }
+  } catch (error: any) {
     console.error('Create Upgrade Checkout Error:', error)
-    throw error // Re-throw to be caught by client component
-  }
-
-  if (url) {
-    redirect(url)
+    return { error: error.message || 'Unknown error' }
   }
 }
