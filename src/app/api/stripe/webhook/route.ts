@@ -27,6 +27,21 @@ export async function POST(req: NextRequest) {
         const subscriptionId = session.subscription as string | null;
         const userId = session.metadata?.userId;
         const planName = session.metadata?.planName;
+        const type = session.metadata?.type;
+
+        // Handle One-Time Upgrade Payment
+        if (type === 'upgrade' && userId && planName) {
+             const plan = isPlanKey(planName) ? (planName as PlanKey) : null
+             if (plan) {
+                 await admin.from('users').update({
+                     plan_type: plan,
+                     // We don't update subscription ID here as this is a one-off payment
+                     // But we might want to log it?
+                 }).eq('id', userId)
+                 console.log(`[Webhook] User ${userId} upgraded to ${plan} via one-time payment`)
+             }
+             break;
+        }
 
         if (!userId || !subscriptionId) break
 

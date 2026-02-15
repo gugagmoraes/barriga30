@@ -107,6 +107,26 @@ export default async function DashboardPage() {
         </h1>
       </div>
 
+      {/* Upgrade Banner */}
+      {profile?.plan_type !== 'vip' && (
+        <div className="bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl p-4 text-white shadow-md flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h3 className="font-bold text-lg flex items-center gap-2">
+                    <Award className="h-5 w-5 text-yellow-200" />
+                    Faça Upgrade do seu Plano
+                </h3>
+                <p className="text-amber-100 text-sm">
+                    Desbloqueie treinos avançados, mentorias e muito mais pagando apenas a diferença.
+                </p>
+            </div>
+            <Button asChild variant="secondary" className="whitespace-nowrap font-semibold shadow-sm hover:scale-105 transition-transform text-amber-900">
+                <Link href="/upgrade">
+                    Ver Opções de Upgrade
+                </Link>
+            </Button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left Column: Stats + Tabs (Progression / Ranking) */}
           <div className="space-y-6">
