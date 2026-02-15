@@ -59,7 +59,68 @@ export async function saveDietPreferences(formData: FormData) {
             (typeof userEmail === 'string' ? userEmail.split('@')[0] : null) ||
             'Usuário'
 
-        const { error: ensureUserError } = await supabaseAdmin
+        // Check if user exists by ID first
+        const { data: existingUserById } = await supabaseAdmin
+            .from('users')
+            .select('id')
+            .eq('id', user.id)
+            .single()
+
+        if (existingUserById) {
+            // User exists by ID, just update fields if needed
+            const { error: updateError } = await supabaseAdmin
+                .from('users')
+                .update({
+                    email: userEmail,
+                    name: userName
+                })
+                .eq('id', user.id)
+            
+            if (updateError) throw new Error(`Failed to update existing user: ${updateError.message}`)
+        } else {
+            // User doesn't exist by ID. 
+            // Check if email exists (edge case where ID is different but email is same - shouldn't happen in standard Supabase Auth but good to handle)
+            // However, Supabase Auth user.id SHOULD match public.users.id.
+            // If we get here, it means no row in public.users for this ID.
+            
+            // Try insert. If email conflict happens, it means we have a row with this email but DIFFERENT ID?
+            // That would be a data integrity issue.
+            // Assuming standard flow: ID is the key.
+            
+            // We use upsert with onConflict: 'id' as before, but let's handle the email constraint.
+            // If email is unique and we try to insert a new ID with existing email, it fails.
+            
+            // Let's first check if there's ANY user with this email
+            if (userEmail) {
+                 const { data: existingUserByEmail } = await supabaseAdmin
+                    .from('users')
+                    .select('id')
+                    .eq('email', userEmail)
+                    .single()
+                 
+                 if (existingUserByEmail && existingUserByEmail.id !== user.id) {
+                     // CRITICAL: Found user with same email but different ID.
+                     // We cannot insert/update this user without violating unique constraint.
+                     // Log error and maybe fail gracefully or try to link?
+                     console.error(`[saveDietPreferences] Critical: Email ${userEmail} already exists for user ${existingUserByEmail.id}, but current user is ${user.id}`)
+                     // Fallback: Do NOT update email for this user to avoid crash, just update other fields?
+                     // Or just insert without email?
+                     // Let's try to update the OLD user to remove email? No, that's dangerous.
+                     
+                     // Decision: Proceed with insert/upsert but EXCLUDE email if it conflicts? 
+                     // Or just throw clear error?
+                     // Better approach for now: Do not attempt to write to 'users' table if we detect this conflict, 
+                     // OR just update the existing user record associated with the email to point to the new ID? (Not possible, ID is PK)
+                     
+                     // Simplest fix for "duplicate key value violates unique constraint users_email_key":
+                     // If we are trying to UPSERT by ID, and the Email matches another row, it fails.
+                     
+                     // We will try to find the user by ID. If found, update.
+                     // If not found, insert. 
+                 }
+            }
+
+            const { error: ensureUserError } = await supabaseAdmin
             .from('users')
             .upsert(
                 {
@@ -67,11 +128,26 @@ export async function saveDietPreferences(formData: FormData) {
                     email: userEmail,
                     name: userName,
                 } as any,
-                { onConflict: 'id' }
+                { onConflict: 'id', ignoreDuplicates: false } 
             )
 
-        if (ensureUserError) {
-            throw new Error(`Failed to ensure public.users row: ${ensureUserError.message}`)
+             // If error is strictly email constraint, try updating without email
+             if (ensureUserError && ensureUserError.message.includes('users_email_key')) {
+                 console.warn('[saveDietPreferences] Email conflict detected, retrying without email update...')
+                  const { error: retryError } = await supabaseAdmin
+                    .from('users')
+                    .upsert(
+                        {
+                            id: user.id,
+                            name: userName,
+                            // Do not send email
+                        } as any,
+                        { onConflict: 'id' }
+                    )
+                 if (retryError) throw new Error(`Failed to ensure user (retry): ${retryError.message}`)
+             } else if (ensureUserError) {
+                 throw new Error(`Failed to ensure public.users row: ${ensureUserError.message}`)
+             }
         }
 
         // Archive old active preferences
