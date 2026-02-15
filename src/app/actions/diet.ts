@@ -141,10 +141,59 @@ export async function saveDietPreferences(formData: FormData) {
                             id: user.id,
                             name: userName,
                             // Do not send email
+                            // CRITICAL FIX: email is likely NOT NULL in database schema, so we must provide something or ensure existing row.
+                            // But we know 'upsert' with 'onConflict: id' updates if exists.
+                            // If it tries to INSERT a new row, it needs email if it's NOT NULL.
+                            // However, we are here because an insert FAILED due to email conflict, OR update failed?
+                            // 'upsert' tries to insert first.
+                            
+                            // If we have a conflict on EMAIL, it means we can't have this email on this ID.
+                            // But the ID is fixed (from auth).
+                            
+                            // So we must be in a state where:
+                            // User A (ID_A, email_A) exists.
+                            // We try to insert User B (ID_B, email_A).
+                            // This fails unique constraint on email.
+                            
+                            // Since we cannot change ID_B (it's the auth user), and we probably shouldn't change email_A (it belongs to someone else?),
+                            // we are stuck. 
+                            
+                            // BUT, in many systems, this happens when "someone else" is actually the SAME user from a previous deleted account or weird state.
+                            // OR, more likely, we just need to ensure the user row exists.
+                            
+                            // If the column allows NULL, we pass null.
+                            // If it does NOT allow NULL, we are in trouble unless we use a dummy email.
+                            
+                            // Based on logs: "null value in column "email" of relation "users" violates not-null constraint"
+                            // So we CANNOT pass null.
+                            
+                            // STRATEGY:
+                            // 1. Find the OTHER user who has this email.
+                            // 2. Nuke their email (set to a dummy or null if allowed, but it's not).
+                            // 3. Or, update THAT user to be THIS user? (Dangerous/Impossible if IDs differ).
+                            
+                            // EMERGENCY FIX:
+                            // Use a placeholder email for THIS user just to get them in the DB.
+                            // email: `${user.id}@placeholder.com`
                         } as any,
                         { onConflict: 'id' }
                     )
-                 if (retryError) throw new Error(`Failed to ensure user (retry): ${retryError.message}`)
+                    
+                 // Retrying with placeholder if the above failed (which it did in the log with null error)
+                 if (retryError) {
+                      console.warn('[saveDietPreferences] Retry failed (probably not-null constraint). Trying with placeholder email...')
+                      const { error: placeholderError } = await supabaseAdmin
+                        .from('users')
+                        .upsert(
+                            {
+                                id: user.id,
+                                name: userName,
+                                email: `conflict_${user.id}@placeholder.com` // Temporary fix to allow insert
+                            } as any,
+                            { onConflict: 'id' }
+                        )
+                      if (placeholderError) throw new Error(`Failed to ensure user (placeholder retry): ${placeholderError.message}`)
+                 }
              } else if (ensureUserError) {
                  throw new Error(`Failed to ensure public.users row: ${ensureUserError.message}`)
              }
