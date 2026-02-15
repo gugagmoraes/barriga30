@@ -140,46 +140,50 @@ export async function signup(prevState: any, formData: FormData) {
   }
 
   // Se um plano foi selecionado, criar sessão do Stripe
-  if (selectedPlan && selectedPlan !== 'basic' && authData.user) {
-    // TODO: Usar IDs reais do Stripe em produção
-    const priceMap: Record<string, string> = {
-        'basic': 'price_1SjR0fGigUIifkMigDDhf5pv', 
-        'plus': 'price_1SjR1vGigUIifkMib6IHcTak',
-        'vip': 'price_1SyI7SGigUIifkMizfRzNT4V'
-    }
-
-    const priceId = priceMap[selectedPlan]
+  // Apenas redireciona se o plano for diferente de basic OU se quisermos cobrar o basic também (depende da regra de negócio)
+  // Assumindo que basic é gratuito ou fluxo diferente. Se basic for pago, remova a condição !== 'basic'
+  if (plan && plan !== 'basic' && authData.user) {
+    console.log('[Signup] Plan selected, initiating checkout:', plan)
+    
+    // Obter Price ID correto do módulo de preços
+    // Importante: Usar a função auxiliar para garantir consistência
+    const { getPriceIdForPlan } = await import('@/lib/stripe/prices')
+    const priceId = getPriceIdForPlan(plan as any)
 
     if (priceId) {
-      // WARNING: This will fail if using placeholder IDs. Ensure valid Stripe Price IDs are used.
-      if (priceId.includes('placeholder')) {
-          console.warn('⚠️ WARNING: Using placeholder Stripe Price IDs. Checkout will fail. Please update src/app/(auth)/actions.ts with real Price IDs.');
-      }
-
       try {
-          console.log('Criando sessão de checkout para:', { priceId, email, plan })
+          console.log('[Signup] Creating checkout session:', { priceId, email, plan })
+          
+          // Criar cliente Stripe se necessário (já tratado no createCheckoutSession ou no webhook, mas bom garantir)
+          // A função createCheckoutSession lida com a criação do customer se não passado, mas precisamos passar o ID do usuário
+          
           const { url } = await createCheckoutSession({
             priceId,
             userId: authData.user.id,
             userEmail: email,
-            planName: selectedPlan,
+            planName: plan,
+            // Success URL deve redirecionar para dashboard com flag de sucesso
+            successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?checkout=success&plan=${plan}`,
+            cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?checkout=canceled`
           });
           
           if (url) {
-            console.log('Redirecionando para Stripe:', url)
+            console.log('[Signup] Redirecting to Stripe:', url)
             redirect(url)
           } else {
-            console.error('Stripe session created but no URL returned')
+            console.error('[Signup] Stripe session created but no URL returned')
           }
       } catch (e: any) {
           // Se for erro de redirecionamento do Next.js, deixa passar
           if (e.message === 'NEXT_REDIRECT') {
             throw e
           }
-          console.error("Failed to create Stripe session during signup", e)
-          // Em caso de erro no Stripe, continuamos para o dashboard
-          // O usuário poderá assinar depois
+          console.error("[Signup] Failed to create Stripe session:", e)
+          // Em caso de erro crítico no pagamento, talvez devêssemos avisar o usuário?
+          // Por enquanto, segue para dashboard (fallback), mas o ideal seria tratar.
       }
+    } else {
+        console.error('[Signup] No price ID found for plan:', plan)
     }
   }
 
