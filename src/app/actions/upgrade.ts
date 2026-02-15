@@ -114,6 +114,8 @@ export async function getUpgradeDetails(): Promise<UpgradeDetails | null> {
 }
 
 export async function createUpgradeCheckout(targetPlan: PlanKey) {
+  let url: string | null = null
+
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -175,10 +177,14 @@ export async function createUpgradeCheckout(targetPlan: PlanKey) {
     })
 
     if (session.url) {
-      redirect(session.url)
+      url = session.url
     }
   } catch (error) {
     console.error('Create Upgrade Checkout Error:', error)
     throw error // Re-throw to be caught by client component
+  }
+
+  if (url) {
+    redirect(url)
   }
 }
