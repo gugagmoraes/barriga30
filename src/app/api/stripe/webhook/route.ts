@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         const subscriptionId = session.subscription as string | null;
-        const userId = session.metadata?.userId;
+        let userId = session.metadata?.userId;
         const planName = session.metadata?.planName;
         const type = session.metadata?.type;
 
