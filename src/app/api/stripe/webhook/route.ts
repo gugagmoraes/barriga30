@@ -60,7 +60,26 @@ export async function POST(req: NextRequest) {
         }
 
         if (!userId || !subscriptionId) {
-            console.log('[Webhook] Missing userId or subscriptionId, skipping.')
+            // TENTATIVA DE RECUPERAÇÃO: Se não vier userId, busca pelo email do cliente no Stripe
+            if (!userId && session.customer_details?.email) {
+                console.log(`[Webhook] UserId missing. Trying to find user by email: ${session.customer_details.email}`)
+                const { data: userByEmail } = await admin
+                    .from('users')
+                    .select('id')
+                    .eq('email', session.customer_details.email)
+                    .maybeSingle()
+                
+                if (userByEmail) {
+                    userId = userByEmail.id
+                    console.log(`[Webhook] User found by email: ${userId}`)
+                } else {
+                    console.log(`[Webhook] User not found by email: ${session.customer_details.email}`)
+                }
+            }
+        }
+
+        if (!userId || !subscriptionId) {
+            console.log('[Webhook] Missing userId or subscriptionId (and email lookup failed), skipping.')
             break
         }
 

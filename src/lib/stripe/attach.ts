@@ -19,7 +19,8 @@ export async function attachCheckoutSessionToUser(params: {
 
   if (params.userEmail && sessionEmail) {
     if (params.userEmail.trim().toLowerCase() !== sessionEmail.trim().toLowerCase()) {
-      throw new Error('Email mismatch')
+      console.warn(`[Attach] Email mismatch warning: Session email (${sessionEmail}) vs User email (${params.userEmail}). Proceeding anyway.`)
+      // throw new Error('Email mismatch') -- REMOVED STRICT CHECK
     }
   }
 

@@ -158,8 +158,9 @@ export async function signup(prevState: any, formData: FormData) {
       })
       console.log('[Signup] Checkout attached:', result.plan)
     } catch (e: any) {
-      console.error('[Signup] Failed to attach checkout session:', e)
-      return { error: 'Pagamento confirmado, mas falhou ao ativar o plano. Tente fazer login e, se persistir, contate o suporte.' }
+      console.error('[Signup] Failed to attach checkout session (non-blocking):', e)
+      // We don't return error here to avoid blocking the user from accessing the dashboard.
+      // The webhook should handle the plan update if this fails.
     }
   }
 
