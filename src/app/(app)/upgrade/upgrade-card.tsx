@@ -44,6 +44,14 @@ export function UpgradeCard({ option, currentPlan, currentPrice }: UpgradeCardPr
   }
 
   const isPremium = option.key === 'vip'
+  const installment12 = option.diff / 12
+  const installment12Annual = option.price / 12
+  const extraHeading =
+    option.key === 'plus'
+      ? 'TUDO do Plano Essencial, MAIS:'
+      : option.key === 'vip'
+        ? 'TUDO do Plano Evolução, MAIS:'
+        : null
 
   return (
     <Card className={`relative overflow-hidden border-2 ${isPremium ? 'border-amber-400 shadow-lg scale-105 z-10' : 'border-gray-200'}`}>
@@ -61,11 +69,15 @@ export function UpgradeCard({ option, currentPlan, currentPrice }: UpgradeCardPr
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Benefits */}
         <div className="space-y-2">
           <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
             Benefícios Adicionais
           </h4>
+          {extraHeading && (
+            <div className="text-sm font-semibold text-gray-900">
+              {extraHeading}
+            </div>
+          )}
           <ul className="space-y-2">
             {option.benefits.map((benefit, i) => (
               <li key={i} className="flex items-start gap-2 text-sm">
@@ -76,11 +88,13 @@ export function UpgradeCard({ option, currentPlan, currentPrice }: UpgradeCardPr
           </ul>
         </div>
 
-        {/* Financial Summary */}
         <div className="bg-gray-50 p-4 rounded-lg space-y-3 border border-gray-100">
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>Valor Anual do {option.name}:</span>
             <span>{formatCurrency(option.price)}</span>
+          </div>
+          <div className="flex justify-end text-xs text-muted-foreground -mt-2">
+            ou 12x de {formatCurrency(installment12Annual)} (sem juros)
           </div>
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>Seu Crédito ({PLAN_LABELS[currentPlan]}):</span>
@@ -91,15 +105,14 @@ export function UpgradeCard({ option, currentPlan, currentPrice }: UpgradeCardPr
             <span className="text-xl font-bold text-primary">{formatCurrency(option.diff)}</span>
           </div>
           
-          <div className="text-xs text-muted-foreground text-right">
-            ou em até 12x no cartão*
+          <div className="text-xs text-muted-foreground text-right space-y-0.5">
+            <div>1x de {formatCurrency(option.diff)} (no cartão)</div>
+            <div>Ou em até 12x de {formatCurrency(installment12)} (sem juros)</div>
           </div>
         </div>
 
-        {/* Premium Promo */}
         {isPremium && (
           <div className="bg-amber-50 p-3 rounded border border-amber-200 text-amber-800 text-xs font-medium flex gap-2 items-center">
-            <span className="text-lg">🎁</span>
             <span>
               Ao escolher o Premium, você garante <strong>R$100 de desconto</strong> na renovação do próximo ano!
             </span>
@@ -124,7 +137,7 @@ export function UpgradeCard({ option, currentPlan, currentPrice }: UpgradeCardPr
         </Button>
       </CardFooter>
       <div className="px-6 pb-4 text-[10px] text-muted-foreground text-center">
-        *Juros de parcelamento aplicados pelo processador de pagamento.
+        Parcelamento em até 12x sem juros.
       </div>
     </Card>
   )

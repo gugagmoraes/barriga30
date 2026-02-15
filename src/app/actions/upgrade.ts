@@ -25,10 +25,23 @@ const PLAN_NAMES: Record<PlanKey, string> = {
   vip: 'Plano Premium'
 }
 
-const PLAN_BENEFITS: Record<PlanKey, string[]> = {
-  basic: ['Acesso ao App', 'Treinos Iniciante', 'Dieta Básica'],
-  plus: ['Tudo do Essencial', 'Treinos Intermediários', 'Ajuste de Nível', 'Suporte Prioritário'],
-  vip: ['Tudo do Evolução', 'Treinos Avançados', 'Mentorias Mensais', 'Grupo Exclusivo', 'R$100 OFF na Renovação']
+const PLAN_BENEFITS_EXTRA: Record<Exclude<PlanKey, 'basic'>, string[]> = {
+  plus: [
+    'Programas de Treino Progressivos (Iniciante ao Avançado)',
+    'Dietas Dinâmicas e Adaptativas (Evita estagnação)',
+    'Gamificação Completa (Conquistas, Badges)',
+    'Histórico Completo de Progresso',
+    'Suporte Inteligente Acelerado',
+    'Acesso de 1 ano à plataforma',
+  ],
+  vip: [
+    'Treinos Especiais para Dias Críticos (TPM, etc)',
+    'Biblioteca Exclusiva (Glúteos, Abdômen...)',
+    'Desconto de R$100 na Renovação',
+    'Acesso Antecipado a Novidades',
+    'Suporte Inteligente VIP',
+    'Acesso de 1 ano à plataforma',
+  ],
 }
 
 export async function getUpgradeDetails(): Promise<UpgradeDetails | null> {
@@ -73,14 +86,14 @@ export async function getUpgradeDetails(): Promise<UpgradeDetails | null> {
           name: PLAN_NAMES['plus'],
           price: plusPrice,
           diff: Math.max(0, plusPrice - currentPrice),
-          benefits: PLAN_BENEFITS['plus']
+          benefits: PLAN_BENEFITS_EXTRA['plus']
       })
       options.push({
           key: 'vip',
           name: PLAN_NAMES['vip'],
           price: vipPrice,
           diff: Math.max(0, vipPrice - currentPrice),
-          benefits: PLAN_BENEFITS['vip']
+          benefits: PLAN_BENEFITS_EXTRA['vip']
       })
   } else if (currentPlan === 'plus') {
       const vipPrice = priceMap['vip']
@@ -89,7 +102,7 @@ export async function getUpgradeDetails(): Promise<UpgradeDetails | null> {
           name: PLAN_NAMES['vip'],
           price: vipPrice,
           diff: Math.max(0, vipPrice - currentPrice),
-          benefits: PLAN_BENEFITS['vip']
+          benefits: PLAN_BENEFITS_EXTRA['vip']
       })
   }
 

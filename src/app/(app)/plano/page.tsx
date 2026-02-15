@@ -84,24 +84,34 @@ export default async function MyPlanPage() {
              <ul className="text-sm space-y-1 text-muted-foreground ml-6 list-disc">
                 {planType === 'basic' && (
                     <>
-                        <li>Acesso ao App</li>
-                        <li>Treinos para Iniciantes</li>
-                        <li>Dieta Básica</li>
+                        <li>1 Programa de Treino Fixo (ABC)</li>
+                        <li>1 Dieta Personalizada (1x no início)</li>
+                        <li>Trackers de Hidratação e Refeições</li>
+                        <li>Gamificação Básica (XP, Níveis)</li>
+                        <li>Central de Ajuda via Bot</li>
+                        <li>Acesso de 1 ano à plataforma</li>
                     </>
                 )}
                 {planType === 'plus' && (
                     <>
-                        <li>Tudo do Plano Essencial</li>
-                        <li>Treinos Intermediários</li>
-                        <li>Suporte Prioritário</li>
+                        <li>TUDO do Plano Essencial, MAIS:</li>
+                        <li>Programas de Treino Progressivos (Iniciante ao Avançado)</li>
+                        <li>Dietas Dinâmicas e Adaptativas (Evita estagnação)</li>
+                        <li>Gamificação Completa (Conquistas, Badges)</li>
+                        <li>Histórico Completo de Progresso</li>
+                        <li>Suporte Inteligente Acelerado</li>
+                        <li>Acesso de 1 ano à plataforma</li>
                     </>
                 )}
                 {planType === 'vip' && (
                     <>
-                        <li>Acesso Total (Iniciante ao Avançado)</li>
-                        <li>Mentorias Mensais</li>
-                        <li>Grupo Exclusivo</li>
-                        <li>R$100 OFF na Renovação</li>
+                        <li>TUDO do Plano Evolução, MAIS:</li>
+                        <li>Treinos Especiais para Dias Críticos (TPM, etc)</li>
+                        <li>Biblioteca Exclusiva (Glúteos, Abdômen...)</li>
+                        <li>Desconto de R$100 na Renovação</li>
+                        <li>Acesso Antecipado a Novidades</li>
+                        <li>Suporte Inteligente VIP</li>
+                        <li>Acesso de 1 ano à plataforma</li>
                     </>
                 )}
              </ul>
