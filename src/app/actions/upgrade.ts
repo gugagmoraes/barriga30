@@ -5,7 +5,7 @@ import { stripe } from '@/lib/stripe/config'
 import { STRIPE_PRICE_IDS, PlanKey } from '@/lib/stripe/prices'
 import { redirect } from 'next/navigation'
 
-type UpgradeOption = {
+export type UpgradeOption = {
   key: PlanKey
   name: string
   price: number // Annual price in cents
