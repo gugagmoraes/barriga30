@@ -21,6 +21,8 @@ export async function POST(req: NextRequest) {
   if (!admin) return new NextResponse('Server misconfigured', { status: 500 })
 
   try {
+    console.log(`[Webhook] Processing event: ${event.type}`, { id: event.id })
+
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
@@ -29,21 +31,38 @@ export async function POST(req: NextRequest) {
         const planName = session.metadata?.planName;
         const type = session.metadata?.type;
 
+        console.log(`[Webhook] checkout.session.completed`, { 
+            sessionId: session.id, 
+            userId, 
+            planName, 
+            type, 
+            subscriptionId 
+        })
+
         // Handle One-Time Upgrade Payment
         if (type === 'upgrade' && userId && planName) {
              const plan = isPlanKey(planName) ? (planName as PlanKey) : null
              if (plan) {
-                 await admin.from('users').update({
+                 console.log(`[Webhook] Upgrading user ${userId} to plan ${plan}...`)
+                 const { error } = await admin.from('users').update({
                      plan_type: plan,
-                     // We don't update subscription ID here as this is a one-off payment
-                     // But we might want to log it?
                  }).eq('id', userId)
-                 console.log(`[Webhook] User ${userId} upgraded to ${plan} via one-time payment`)
+
+                 if (error) {
+                     console.error(`[Webhook] Failed to update user plan: ${error.message}`)
+                 } else {
+                     console.log(`[Webhook] Successfully upgraded user ${userId} to ${plan}`)
+                 }
+             } else {
+                 console.warn(`[Webhook] Invalid plan name in metadata: ${planName}`)
              }
              break;
         }
 
-        if (!userId || !subscriptionId) break
+        if (!userId || !subscriptionId) {
+            console.log('[Webhook] Missing userId or subscriptionId, skipping.')
+            break
+        }
 
         const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
           expand: ['items.data.price'],
@@ -74,6 +93,8 @@ export async function POST(req: NextRequest) {
       case 'customer.subscription.deleted': {
         const eventSubscription = event.data.object as Stripe.Subscription;
         
+        console.log(`[Webhook] Subscription event: ${event.type}`, { subscriptionId: eventSubscription.id })
+
         // CORREÇÃO: Busca a assinatura completa para ter acesso aos preços expandidos
         // Isso garante que saibamos qual é o plano atual (Basic, Plus, VIP)
         const subscription = await stripe.subscriptions.retrieve(eventSubscription.id, {
@@ -82,33 +103,56 @@ export async function POST(req: NextRequest) {
 
         const status = subscription.status;
         const customerId = typeof subscription.customer === 'string' ? subscription.customer : null
-        if (!customerId) break
+        
+        if (!customerId) {
+            console.log('[Webhook] Missing customerId in subscription')
+            break
+        }
 
         const { data: user } = await admin.from('users').select('id').eq('stripe_customer_id', customerId).maybeSingle()
-        if (!user?.id) break
+        if (!user?.id) {
+            console.error(`[Webhook] User not found for customerId: ${customerId}`)
+            break
+        }
+
+        console.log(`[Webhook] Updating subscription for user ${user.id}`)
 
         // Determina o plano baseado no ID do preço
         const priceId = subscription.items.data[0]?.price?.id
         const planFromPrice = priceId ? getPlanFromPriceId(priceId) : null
         const plan: PlanKey = planFromPrice || 'basic'
 
+        console.log(`[Webhook] Subscription plan determined: ${plan} (from price ${priceId})`)
+
         const currentPeriodEnd = (subscription as any).current_period_end as number | undefined
 
         if (status === 'active' || status === 'trialing') {
-          await admin.from('users').update({
+          const { error } = await admin.from('users').update({
             plan_type: plan, // Atualiza o plano corretamente
             stripe_subscription_id: subscription.id,
             stripe_subscription_status: status,
             stripe_current_period_end: currentPeriodEnd ? new Date(currentPeriodEnd * 1000).toISOString() : null,
           }).eq('id', user.id)
+
+          if (error) {
+              console.error(`[Webhook] Failed to update user subscription: ${error.message}`)
+          } else {
+              console.log(`[Webhook] Successfully updated subscription for user ${user.id}`)
+          }
         } else {
           // Se cancelado ou não pago, volta para o plano basic
-          await admin.from('users').update({
+          const { error } = await admin.from('users').update({
             plan_type: 'basic',
             stripe_subscription_id: subscription.id,
             stripe_subscription_status: status,
             stripe_current_period_end: currentPeriodEnd ? new Date(currentPeriodEnd * 1000).toISOString() : null,
           }).eq('id', user.id)
+
+          if (error) {
+              console.error(`[Webhook] Failed to update user subscription (cancellation): ${error.message}`)
+          } else {
+              console.log(`[Webhook] Successfully updated subscription (cancellation) for user ${user.id}`)
+          }
         }
         break;
       }

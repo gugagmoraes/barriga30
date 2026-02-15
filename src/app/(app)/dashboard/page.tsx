@@ -113,7 +113,7 @@ export default async function DashboardPage() {
                 <Badge variant={currentPlan === 'vip' ? 'default' : (currentPlan === 'plus' ? 'secondary' : 'outline')} className={`gap-1 ${currentPlan === 'vip' ? 'bg-amber-500 hover:bg-amber-600 border-none' : ''} ${currentPlan === 'plus' ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}`}>
                     {currentPlan === 'vip' && <Crown className="h-3 w-3 fill-current" />}
                     {currentPlan === 'plus' && <Zap className="h-3 w-3 fill-current" />}
-                    Plano {currentPlan === 'basic' ? 'Gratuito' : (currentPlan === 'plus' ? 'Plus' : 'VIP')}
+                    Plano {currentPlan === 'basic' ? 'Essencial' : (currentPlan === 'plus' ? 'Plus' : 'VIP')}
                 </Badge>
                 <span className="text-sm text-gray-400">|</span>
                 <span className="text-sm text-gray-600 font-medium">Nível {userStats.level} • {currentLevel?.title || 'Iniciante'}</span>
