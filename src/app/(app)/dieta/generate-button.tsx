@@ -13,7 +13,7 @@ export function GenerateDietButton({ userId, variant = 'initial' }: { userId: st
   const handleGenerate = async () => {
     setIsLoading(true)
     try {
-      await generateInitialDiet(userId)
+      await generateInitialDiet()
       router.refresh()
     } catch (error) {
       console.error('Failed to generate diet:', error)
@@ -35,7 +35,7 @@ export function GenerateDietButton({ userId, variant = 'initial' }: { userId: st
           if (ok) {
             setIsLoading(true)
             try {
-              await resetDiet(userId)
+              await resetDiet()
               router.push('/dieta?reconfigure=1')
             } catch (e) {
               alert('Erro ao preparar atualização da dieta. Tente novamente.')

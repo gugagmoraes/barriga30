@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { PlanType } from '@/types/database.types'
 import { startOfMonth } from 'date-fns'
 import { getFoodById, FoodItem } from '@/lib/food-db'
@@ -250,7 +250,8 @@ async function isDietValid(snapshot: any, foodPrefs: any) {
 }
 
 async function persistShoppingLists(userId: string, snapshot: any) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
+  if (!supabase) throw new Error('Supabase admin client not available')
   const aggregated: Record<string, { total: number, unit: string }> = {}
   for (const meal of snapshot.snapshot_meals) {
     for (const item of meal.snapshot_items) {
@@ -279,7 +280,8 @@ async function persistShoppingLists(userId: string, snapshot: any) {
 }
 
 export async function generateDietForUser(userId: string): Promise<any> {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
+  if (!supabase) throw new Error('Supabase admin client not available')
   const { data: user } = await supabase.from('users').select('*').eq('id', userId).single()
   // Ensure we get the active preferences
   const { data: prefs } = await supabase.from('diet_preferences').select('*').eq('user_id', userId).eq('is_active', true).single()
