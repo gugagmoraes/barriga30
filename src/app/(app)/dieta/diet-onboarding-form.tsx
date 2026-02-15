@@ -147,7 +147,7 @@ export function DietOnboardingForm({ userId, planType = 'basic' }: { userId: str
                 {[
                     { val: '15', label: 'Iniciante (15m)', desc: 'Ideal para quem está começando ou retornando à atividade.' },
                     { val: '20', label: 'Intermed. (20m)', desc: 'Para quem já tem alguma experiência e busca mais desafio.' },
-                    { val: '30', label: 'Avançado (30m)', desc: 'Para atletas experientes que querem alta intensidade.' }
+                    { val: '30', label: 'Avançado (30m)', desc: 'Se o intermediário ficou fácil, essa é a melhor opção.' }
                 ].map((opt) => {
                     return (
                         <div key={opt.val} className="relative h-full">
