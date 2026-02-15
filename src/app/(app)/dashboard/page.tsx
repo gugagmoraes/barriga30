@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
-import { Play, BarChart2, Award } from 'lucide-react'
+import { Play, BarChart2, Award, Crown, Zap } from 'lucide-react'
 import { UserStatsCard } from '@/components/dashboard/UserStatsCard'
 import { BadgesCard } from '@/components/dashboard/BadgesCard'
 import { WorkoutProgressionCard } from '@/components/dashboard/WorkoutProgressionCard'
@@ -99,12 +100,25 @@ export default async function DashboardPage() {
   // Fetch Badges for UI
   const { data: allBadges } = await supabase.from('badges').select('*')
 
+  const currentPlan = profile?.plan_type || 'basic'
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Olá, {profile?.name || user.email?.split('@')[0]}!
-        </h1>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Olá, {profile?.name || user.email?.split('@')[0]}!
+            </h1>
+            <div className="flex items-center gap-2 mt-1">
+                <Badge variant={currentPlan === 'vip' ? 'default' : (currentPlan === 'plus' ? 'secondary' : 'outline')} className={`gap-1 ${currentPlan === 'vip' ? 'bg-amber-500 hover:bg-amber-600 border-none' : ''} ${currentPlan === 'plus' ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}`}>
+                    {currentPlan === 'vip' && <Crown className="h-3 w-3 fill-current" />}
+                    {currentPlan === 'plus' && <Zap className="h-3 w-3 fill-current" />}
+                    Plano {currentPlan === 'basic' ? 'Gratuito' : (currentPlan === 'plus' ? 'Plus' : 'VIP')}
+                </Badge>
+                <span className="text-sm text-gray-400">|</span>
+                <span className="text-sm text-gray-600 font-medium">Nível {userStats.level} • {currentLevel?.title || 'Iniciante'}</span>
+            </div>
+        </div>
       </div>
 
       {/* Upgrade Banner */}

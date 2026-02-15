@@ -72,32 +72,44 @@ export async function POST(req: NextRequest) {
       
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted': {
-        const subscription = event.data.object as Stripe.Subscription;
-        const status = subscription.status;
+        const eventSubscription = event.data.object as Stripe.Subscription;
+        
+        // CORREÇÃO: Busca a assinatura completa para ter acesso aos preços expandidos
+        // Isso garante que saibamos qual é o plano atual (Basic, Plus, VIP)
+        const subscription = await stripe.subscriptions.retrieve(eventSubscription.id, {
+          expand: ['items.data.price'],
+        })
 
+        const status = subscription.status;
         const customerId = typeof subscription.customer === 'string' ? subscription.customer : null
         if (!customerId) break
 
         const { data: user } = await admin.from('users').select('id').eq('stripe_customer_id', customerId).maybeSingle()
         if (!user?.id) break
 
+        // Determina o plano baseado no ID do preço
+        const priceId = subscription.items.data[0]?.price?.id
+        const planFromPrice = priceId ? getPlanFromPriceId(priceId) : null
+        const plan: PlanKey = planFromPrice || 'basic'
+
+        const currentPeriodEnd = (subscription as any).current_period_end as number | undefined
+
         if (status === 'active' || status === 'trialing') {
-          const currentPeriodEnd = (subscription as any).current_period_end as number | undefined
           await admin.from('users').update({
+            plan_type: plan, // Atualiza o plano corretamente
             stripe_subscription_id: subscription.id,
             stripe_subscription_status: status,
             stripe_current_period_end: currentPeriodEnd ? new Date(currentPeriodEnd * 1000).toISOString() : null,
           }).eq('id', user.id)
-          break
+        } else {
+          // Se cancelado ou não pago, volta para o plano basic
+          await admin.from('users').update({
+            plan_type: 'basic',
+            stripe_subscription_id: subscription.id,
+            stripe_subscription_status: status,
+            stripe_current_period_end: currentPeriodEnd ? new Date(currentPeriodEnd * 1000).toISOString() : null,
+          }).eq('id', user.id)
         }
-
-        const currentPeriodEnd = (subscription as any).current_period_end as number | undefined
-        await admin.from('users').update({
-          plan_type: 'basic',
-          stripe_subscription_id: subscription.id,
-          stripe_subscription_status: status,
-          stripe_current_period_end: currentPeriodEnd ? new Date(currentPeriodEnd * 1000).toISOString() : null,
-        }).eq('id', user.id)
         break;
       }
 
