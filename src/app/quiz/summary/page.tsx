@@ -76,8 +76,7 @@ export default function SummaryPage() {
   const handleCheckout = async (plan: 'basic' | 'plus' | 'vip') => {
     if (processing) return
     setProcessing(true)
-    // Lógica para usuário anônimo (Venda)
-    router.push(`/register?plan=${plan}`)
+    router.push(`/checkout/${plan}`)
   }
 
   // Se estiver processando (usuário logado sendo redirecionado), mostra loading

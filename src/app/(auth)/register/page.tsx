@@ -12,9 +12,11 @@ function RegisterForm() {
   const [state, formAction, isPending] = useActionState(signup, null)
   const searchParams = useSearchParams()
   const plan = searchParams.get('plan')
+  const checkoutSessionId = searchParams.get('checkout_session_id') || searchParams.get('session_id')
   
   const [initialName, setInitialName] = useState('')
   const [quizData, setQuizData] = useState('')
+  const [initialEmail, setInitialEmail] = useState('')
 
   useEffect(() => {
     // Tentar recuperar dados do Quiz
@@ -32,12 +34,23 @@ function RegisterForm() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!checkoutSessionId) return
+    fetch(`/api/stripe/checkout-session?session_id=${encodeURIComponent(checkoutSessionId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.email) setInitialEmail(data.email)
+      })
+      .catch(() => {})
+  }, [checkoutSessionId])
+
   return (
     <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
       <form action={formAction} className="space-y-6">
         <input type="hidden" name="plan" value={plan || ''} />
         {/* Pass quiz data to the server action */}
         <input type="hidden" name="quiz_data" value={quizData} />
+        <input type="hidden" name="checkout_session_id" value={checkoutSessionId || ''} />
         
         <div>
           <label htmlFor="name" className="block text-sm font-medium text-gray-700">
@@ -69,6 +82,8 @@ function RegisterForm() {
               autoComplete="email"
               required
               placeholder="seu@email.com"
+              defaultValue={initialEmail}
+              key={initialEmail}
             />
           </div>
         </div>
@@ -97,7 +112,7 @@ function RegisterForm() {
 
         <div>
           <Button type="submit" disabled={isPending} className="w-full">
-            {isPending ? 'Criando conta...' : plan ? `Continuar para Pagamento (${plan})` : 'Criar Conta'}
+            {isPending ? 'Criando conta...' : checkoutSessionId ? 'Criar conta e acessar' : 'Criar Conta'}
           </Button>
         </div>
       </form>

@@ -4,10 +4,10 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { loginSchema, signupSchema } from '@/lib/schemas/auth'
-import { createCheckoutSession } from '@/services/stripe'
 import { logActivity } from '@/services/gamification'
 import { saveQuizSubmission } from '../actions/quiz'
 import { PlanType } from '@/types/database.types'
+import { attachCheckoutSessionToUser } from '@/lib/stripe/attach'
 
 export async function login(prevState: any, formData: FormData) {
   console.log('[Login Action] Started')
@@ -23,6 +23,7 @@ export async function login(prevState: any, formData: FormData) {
   }
 
   const { email, password } = validation.data
+  const checkoutSessionId = formData.get('checkout_session_id') as string | null
 
   const supabase = await createClient()
 
@@ -35,6 +36,15 @@ export async function login(prevState: any, formData: FormData) {
     if (error) {
       console.error('Supabase Auth Error:', error)
       return { error: error.message }
+    }
+
+    if (checkoutSessionId && authData.user) {
+      const result = await attachCheckoutSessionToUser({
+        checkoutSessionId,
+        userId: authData.user.id,
+        userEmail: authData.user.email ?? email,
+      })
+      console.log('[Login Action] Checkout attached:', result.plan)
     }
 
     // GAMIFICATION: Log Daily Login
@@ -60,6 +70,7 @@ export async function login(prevState: any, formData: FormData) {
 export async function signup(prevState: any, formData: FormData) {
   const data = Object.fromEntries(formData.entries())
   const quizDataRaw = formData.get('quiz_data') as string
+  const checkoutSessionId = formData.get('checkout_session_id') as string | null
 
   // 1. Validar dados com Zod
   const validation = signupSchema.safeParse(data)
@@ -68,8 +79,7 @@ export async function signup(prevState: any, formData: FormData) {
     return { error: (validation.error as any).errors[0].message }
   }
 
-  const { email, password, name, plan } = validation.data
-  const selectedPlan = (plan ? plan.toLowerCase() : 'basic') as PlanType
+  const { email, password, name } = validation.data
   const planType: PlanType = 'basic'
 
   const supabase = await createClient()
@@ -139,51 +149,17 @@ export async function signup(prevState: any, formData: FormData) {
     })
   }
 
-  // Se um plano foi selecionado, criar sessão do Stripe
-  // Apenas redireciona se o plano for diferente de basic OU se quisermos cobrar o basic também (depende da regra de negócio)
-  // Assumindo que basic é gratuito ou fluxo diferente. Se basic for pago, remova a condição !== 'basic'
-  if (plan && plan !== 'basic' && authData.user) {
-    console.log('[Signup] Plan selected, initiating checkout:', plan)
-    
-    // Obter Price ID correto do módulo de preços
-    // Importante: Usar a função auxiliar para garantir consistência
-    const { getPriceIdForPlan } = await import('@/lib/stripe/prices')
-    const priceId = getPriceIdForPlan(plan as any)
-
-    if (priceId) {
-      try {
-          console.log('[Signup] Creating checkout session:', { priceId, email, plan })
-          
-          // Criar cliente Stripe se necessário (já tratado no createCheckoutSession ou no webhook, mas bom garantir)
-          // A função createCheckoutSession lida com a criação do customer se não passado, mas precisamos passar o ID do usuário
-          
-          const { url } = await createCheckoutSession({
-            priceId,
-            userId: authData.user.id,
-            userEmail: email,
-            planName: plan,
-            // Success URL deve redirecionar para dashboard com flag de sucesso
-            successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?checkout=success&plan=${plan}`,
-            cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?checkout=canceled`
-          });
-          
-          if (url) {
-            console.log('[Signup] Redirecting to Stripe:', url)
-            redirect(url)
-          } else {
-            console.error('[Signup] Stripe session created but no URL returned')
-          }
-      } catch (e: any) {
-          // Se for erro de redirecionamento do Next.js, deixa passar
-          if (e.message === 'NEXT_REDIRECT') {
-            throw e
-          }
-          console.error("[Signup] Failed to create Stripe session:", e)
-          // Em caso de erro crítico no pagamento, talvez devêssemos avisar o usuário?
-          // Por enquanto, segue para dashboard (fallback), mas o ideal seria tratar.
-      }
-    } else {
-        console.error('[Signup] No price ID found for plan:', plan)
+  if (checkoutSessionId && authData.user) {
+    try {
+      const result = await attachCheckoutSessionToUser({
+        checkoutSessionId,
+        userId: authData.user.id,
+        userEmail: authData.user.email ?? email,
+      })
+      console.log('[Signup] Checkout attached:', result.plan)
+    } catch (e: any) {
+      console.error('[Signup] Failed to attach checkout session:', e)
+      return { error: 'Pagamento confirmado, mas falhou ao ativar o plano. Tente fazer login e, se persistir, contate o suporte.' }
     }
   }
 

@@ -5,13 +5,18 @@ import { login } from '../actions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
-export default function LoginPage() {
+function LoginForm() {
   const [state, formAction, isPending] = useActionState(login, null)
+  const searchParams = useSearchParams()
+  const checkoutSessionId = searchParams.get('checkout_session_id') || searchParams.get('session_id')
 
   return (
     <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
       <form action={formAction} className="space-y-6">
+        <input type="hidden" name="checkout_session_id" value={checkoutSessionId || ''} />
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-gray-700">
             Email
@@ -76,5 +81,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Carregando...</div>}>
+      <LoginForm />
+    </Suspense>
   )
 }

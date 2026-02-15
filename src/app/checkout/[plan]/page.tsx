@@ -1,7 +1,5 @@
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
-import { createClient } from '@/lib/supabase/server'
-import { createCheckoutSession } from '@/services/stripe'
 import { stripe } from '@/lib/stripe/config'
 import { getPriceIdForPlan, isPlanKey } from '@/lib/stripe/prices'
 
@@ -47,7 +45,8 @@ export default async function CheckoutPage({
 
   const origin = process.env.NEXT_PUBLIC_APP_URL || (await getRequestOrigin())
   const successUrl =
-    process.env.NEXT_PUBLIC_STRIPE_SUCCESS_URL || `${origin}/pagamento-sucesso?plan=${plan}`
+    process.env.NEXT_PUBLIC_STRIPE_SUCCESS_URL ||
+    `${origin}/pagamento-sucesso?plan=${plan}&session_id={CHECKOUT_SESSION_ID}`
   const cancelUrl =
     process.env.NEXT_PUBLIC_STRIPE_CANCEL_URL || `${origin}/pagamento-cancelado?plan=${plan}`
 
@@ -69,39 +68,25 @@ export default async function CheckoutPage({
     )
   }
 
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect(`/register?plan=${plan}`)
-  }
-
   try {
-    const { data: profile } = await supabase.from('users').select('stripe_customer_id').eq('id', user.id).single()
-
-    let customerId = profile?.stripe_customer_id as string | null | undefined
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: user.email ?? undefined,
-        metadata: { userId: user.id },
-      })
-      customerId = customer.id
-      await supabase.from('users').update({ stripe_customer_id: customerId }).eq('id', user.id)
-    }
-
-    const { url } = await createCheckoutSession({
-      priceId: getPriceIdForPlan(plan),
-      userId: user.id,
-      userEmail: user.email ?? undefined,
-      planName: plan,
-      successUrl,
-      cancelUrl,
-      customerId: customerId ?? undefined,
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{ price: getPriceIdForPlan(plan), quantity: 1 }],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      allow_promotion_codes: true,
+      subscription_data: {
+        metadata: {
+          planName: plan,
+        },
+      },
+      metadata: {
+        planName: plan,
+      },
     })
 
-    if (!url) {
+    if (!session.url) {
       return (
         <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
           <h1 className="text-2xl font-bold text-red-600">Erro ao iniciar pagamento</h1>
@@ -116,7 +101,7 @@ export default async function CheckoutPage({
       )
     }
 
-    redirect(url)
+    redirect(session.url)
   } catch (error: any) {
     if (error?.digest?.startsWith('NEXT_REDIRECT')) {
       throw error
