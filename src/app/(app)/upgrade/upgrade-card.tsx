@@ -89,34 +89,47 @@ export function UpgradeCard({ option, currentPlan, currentPrice }: UpgradeCardPr
         </div>
 
         <div className="bg-gray-50 p-4 rounded-lg space-y-3 border border-gray-100">
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Valor Anual do {option.name}:</span>
-            <span>{formatCurrency(option.price)}</span>
+          {/* Detailed Breakdown - More subtle */}
+          <div className="space-y-1 pt-2 pb-3 border-b border-gray-200">
+             <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Valor Anual ({option.name}):</span>
+                <span>{formatCurrency(option.price)}</span>
+             </div>
+             <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Crédito do Plano Atual:</span>
+                <span className="text-green-600">-{formatCurrency(currentPrice)}</span>
+             </div>
           </div>
-          <div className="flex justify-end text-xs text-muted-foreground -mt-2">
-            ou 12x de {formatCurrency(installment12Annual)} (sem juros)
-          </div>
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Seu Crédito ({PLAN_LABELS[currentPlan]}):</span>
-            <span className="text-green-600 font-medium">-{formatCurrency(currentPrice)}</span>
-          </div>
-          <div className="pt-3 border-t border-gray-200 flex flex-col gap-3">
-            <div className="flex justify-between items-center">
-              <span className="font-semibold text-gray-900">Valor a Pagar AGORA para Upgrade:</span>
-              <span className="text-xl font-bold text-red-600">{formatCurrency(option.diff)}</span>
-            </div>
 
-            <div className="bg-white rounded-lg border border-red-100 p-3 text-center">
-              <div className="text-xs text-muted-foreground">Ou em</div>
-              <div className="text-red-600 font-extrabold text-3xl leading-none">
-                12x de {formatCurrency(installment12)}
-              </div>
-              <div className="text-xs text-muted-foreground mt-1">(sem juros)</div>
-            </div>
+          {/* Main Price Display */}
+          <div className="text-center space-y-1 py-1">
+             <div className="text-sm text-gray-500 font-medium">
+                Diferença a pagar:
+             </div>
+             <div className="text-red-500 font-bold text-lg">
+                {formatCurrency(option.diff)}
+             </div>
+          </div>
 
-            <div className="text-xs text-muted-foreground text-center">
-              Ou à vista por <span className="font-semibold text-gray-900">{formatCurrency(option.diff)}</span> (no cartão)
-            </div>
+          {/* Installments Highlight - Elegant & Professional */}
+          <div className="bg-white rounded-lg border border-red-100 p-4 text-center shadow-sm">
+             <div className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">
+                Ou parcele em
+             </div>
+             <div className="text-red-600 font-bold text-3xl flex justify-center items-baseline gap-1">
+                <span className="text-lg font-medium text-red-400">12x</span>
+                {formatCurrency(installment12)}
+             </div>
+             <div className="text-[10px] text-gray-400 mt-1 font-medium">
+                SEM JUROS NO CARTÃO
+             </div>
+          </div>
+
+          {/* Cash Payment Option - Subtle */}
+          <div className="text-center">
+             <span className="text-xs text-gray-400">
+                Ou à vista por <span className="text-gray-600 font-medium">{formatCurrency(option.diff)}</span>
+             </span>
           </div>
         </div>
 
