@@ -6,17 +6,12 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription }
 import { Button } from '@/components/ui/button'
 import { createUpgradeCheckout, UpgradeOption } from '@/app/actions/upgrade'
 import { PlanKey } from '@/lib/stripe/prices'
+import { getDisplayPlanName } from '@/lib/utils/planNames'
 
 const PLAN_COLORS: Record<PlanKey, string> = {
   basic: 'bg-blue-50 border-blue-200',
   plus: 'bg-purple-50 border-purple-200',
   vip: 'bg-amber-50 border-amber-200'
-}
-
-const PLAN_LABELS: Record<PlanKey, string> = {
-  basic: 'Plano Essencial',
-  plus: 'Plano Evolução',
-  vip: 'Plano Premium'
 }
 
 interface UpgradeCardProps {
@@ -72,7 +67,7 @@ export function UpgradeCard({ option, currentPlan, currentPrice }: UpgradeCardPr
           {option.name}
         </CardTitle>
         <CardDescription>
-          Upgrade do {PLAN_LABELS[currentPlan]}
+          Upgrade do {getDisplayPlanName(currentPlan)}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

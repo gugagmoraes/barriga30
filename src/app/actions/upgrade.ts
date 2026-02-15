@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe/config'
 import { STRIPE_PRICE_IDS, PlanKey } from '@/lib/stripe/prices'
 import { redirect } from 'next/navigation'
+import { getDisplayPlanName } from '@/lib/utils/planNames'
 
 export type UpgradeOption = {
   key: PlanKey
@@ -17,12 +18,6 @@ type UpgradeDetails = {
   currentPlan: PlanKey
   currentPrice: number
   options: UpgradeOption[]
-}
-
-const PLAN_NAMES: Record<PlanKey, string> = {
-  basic: 'Plano Essencial',
-  plus: 'Plano Evolução',
-  vip: 'Plano Premium'
 }
 
 const PLAN_BENEFITS_EXTRA: Record<Exclude<PlanKey, 'basic'>, string[]> = {
@@ -83,14 +78,14 @@ export async function getUpgradeDetails(): Promise<UpgradeDetails | null> {
       
       options.push({
           key: 'plus',
-          name: PLAN_NAMES['plus'],
+          name: getDisplayPlanName('plus'),
           price: plusPrice,
           diff: Math.max(0, plusPrice - currentPrice),
           benefits: PLAN_BENEFITS_EXTRA['plus']
       })
       options.push({
           key: 'vip',
-          name: PLAN_NAMES['vip'],
+          name: getDisplayPlanName('vip'),
           price: vipPrice,
           diff: Math.max(0, vipPrice - currentPrice),
           benefits: PLAN_BENEFITS_EXTRA['vip']
@@ -99,7 +94,7 @@ export async function getUpgradeDetails(): Promise<UpgradeDetails | null> {
       const vipPrice = priceMap['vip']
       options.push({
           key: 'vip',
-          name: PLAN_NAMES['vip'],
+          name: getDisplayPlanName('vip'),
           price: vipPrice,
           diff: Math.max(0, vipPrice - currentPrice),
           benefits: PLAN_BENEFITS_EXTRA['vip']
@@ -150,7 +145,7 @@ export async function createUpgradeCheckout(targetPlan: PlanKey) {
             currency: 'brl',
             product_data: {
               name: `Upgrade para ${option.name}`,
-              description: `Diferença de valor para upgrade do plano ${PLAN_NAMES[details.currentPlan]} para ${option.name}`
+              description: `Diferença de valor para upgrade do plano ${getDisplayPlanName(details.currentPlan)} para ${option.name}`
             },
             unit_amount: option.diff,
           },

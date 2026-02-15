@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { attachCheckoutSessionToUser } from '@/lib/stripe/attach'
+import { getDisplayPlanName } from '@/lib/utils/planNames'
 
 export default async function PagamentoSucessoPage({
   searchParams,
@@ -30,7 +31,7 @@ export default async function PagamentoSucessoPage({
     <div className="max-w-xl mx-auto py-12 px-4 text-center space-y-4">
       <h1 className="text-2xl font-bold text-gray-900">Pagamento confirmado</h1>
       <p className="text-gray-600">
-        {plan ? `Plano selecionado: ${plan}. ` : ''}
+        {plan ? `Plano selecionado: ${getDisplayPlanName(plan)}. ` : ''}
         Para acessar o conteúdo, crie sua conta (ou faça login) usando o mesmo e-mail utilizado no pagamento.
       </p>
       <div className="flex items-center justify-center gap-3">
