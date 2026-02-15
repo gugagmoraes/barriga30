@@ -11,10 +11,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox'
 import { FOOD_DB, getFoodsByCategory } from '@/lib/food-db'
 
-export function DietOnboardingForm({ userId }: { userId: string }) {
+import { Lock } from 'lucide-react'
+
+export function DietOnboardingForm({ userId, planType = 'basic' }: { userId: string, planType?: string }) {
   const [loading, setLoading] = useState(false)
   const [selectedFrequency, setSelectedFrequency] = useState('')
-  const [selectedDuration, setSelectedDuration] = useState('')
+  const [selectedDuration, setSelectedDuration] = useState('15')
   
   // Food selection state
   const [selectedProteins, setSelectedProteins] = useState<string[]>([])
@@ -141,23 +143,36 @@ export function DietOnboardingForm({ userId }: { userId: string }) {
             {/* 3. Workout Duration (Buttons) */}
             <div className="space-y-3">
               <Label>Duração do Treino (Nível)</Label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 {[
-                    { val: '15', label: 'Iniciante (15m)' },
-                    { val: '20', label: 'Intermed. (20m)' },
-                    { val: '30', label: 'Avançado (30m)' }
-                ].map((opt) => (
-                    <Button
-                        key={opt.val}
-                        type="button"
-                        variant={selectedDuration === opt.val ? 'default' : 'outline'}
-                        onClick={() => setSelectedDuration(opt.val)}
-                        className="w-full text-xs md:text-sm px-1"
-                    >
-                        {opt.label}
-                    </Button>
-                ))}
+                    { val: '15', label: 'Iniciante (15m)', desc: 'Ideal para quem está começando ou retornando à atividade.' },
+                    { val: '20', label: 'Intermed. (20m)', desc: 'Para quem já tem alguma experiência e busca mais desafio.' },
+                    { val: '30', label: 'Avançado (30m)', desc: 'Para atletas experientes que querem alta intensidade.' }
+                ].map((opt) => {
+                    return (
+                        <div key={opt.val} className="relative h-full">
+                            <Button
+                                type="button"
+                                variant={selectedDuration === opt.val ? 'default' : 'outline'}
+                                onClick={() => setSelectedDuration(opt.val)}
+                                className={`w-full h-full py-3 flex flex-col items-center gap-1`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <span className="font-semibold">{opt.label}</span>
+                                </div>
+                                <span className="text-[10px] text-center font-normal leading-tight opacity-90 px-1">
+                                    {opt.desc}
+                                </span>
+                            </Button>
+                        </div>
+                    )
+                })}
               </div>
+              {planType === 'basic' && (
+                  <p className="text-[10px] text-muted-foreground text-center mt-2 bg-yellow-50 p-2 rounded border border-yellow-100">
+                    <span className="font-bold text-yellow-700">Nota para Plano Basic:</span> Sua escolha de nível será fixa. Faça upgrade para Plus ou VIP para alterar o nível a qualquer momento.
+                  </p>
+              )}
             </div>
 
             {/* 4. Food Preferences (Checklists) */}

@@ -37,12 +37,12 @@ export default async function DietPage({ searchParams }: { searchParams?: { reco
   if (forceReconfigure || !snapshot) {
     // Always show onboarding form when forcing reconfigure
     if (forceReconfigure) {
-      return <DietOnboardingForm userId={user.id} />
+      return <DietOnboardingForm userId={user.id} planType={userData?.plan_type || 'basic'} />
     }
 
     // If no preferences, show onboarding form
     if (!prefs) {
-      return <DietOnboardingForm userId={user.id} />
+      return <DietOnboardingForm userId={user.id} planType={userData?.plan_type || 'basic'} />
     }
 
     // If has preferences but no snapshot, show generate button
