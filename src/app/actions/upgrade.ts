@@ -114,63 +114,71 @@ export async function getUpgradeDetails(): Promise<UpgradeDetails | null> {
 }
 
 export async function createUpgradeCheckout(targetPlan: PlanKey) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error('Unauthorized')
 
-  const details = await getUpgradeDetails()
-  if (!details) throw new Error('Could not fetch details')
+    const details = await getUpgradeDetails()
+    if (!details) throw new Error('Could not fetch details')
 
-  const option = details.options.find(o => o.key === targetPlan)
-  if (!option) throw new Error('Invalid upgrade option')
+    const option = details.options.find(o => o.key === targetPlan)
+    if (!option) throw new Error('Invalid upgrade option')
 
-  const { data: profile } = await supabase.from('users').select('stripe_customer_id').eq('id', user.id).single()
-  
-  let customerId = profile?.stripe_customer_id
-  if (!customerId) {
-      const customer = await stripe.customers.create({
-          email: user.email ?? undefined,
-          metadata: { userId: user.id }
-      })
-      customerId = customer.id
-      await supabase.from('users').update({ stripe_customer_id: customerId }).eq('id', user.id)
-  }
+    const { data: profile } = await supabase.from('users').select('stripe_customer_id').eq('id', user.id).single()
+    
+    let customerId = profile?.stripe_customer_id
+    if (!customerId) {
+        const customer = await stripe.customers.create({
+            email: user.email ?? undefined,
+            metadata: { userId: user.id }
+        })
+        customerId = customer.id
+        await supabase.from('users').update({ stripe_customer_id: customerId }).eq('id', user.id)
+    }
 
-  const session = await stripe.checkout.sessions.create({
-    customer: customerId || undefined,
-    mode: 'payment',
-    payment_method_types: ['card'],
-    line_items: [
-      {
-        price_data: {
-          currency: 'brl',
-          product_data: {
-            name: `Upgrade para ${option.name}`,
-            description: `Diferença de valor para upgrade do plano ${PLAN_NAMES[details.currentPlan]} para ${option.name}`
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL
+    if (!appUrl) throw new Error('Missing NEXT_PUBLIC_APP_URL')
+
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId || undefined,
+      mode: 'payment',
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'brl',
+            product_data: {
+              name: `Upgrade para ${option.name}`,
+              description: `Diferença de valor para upgrade do plano ${PLAN_NAMES[details.currentPlan]} para ${option.name}`
+            },
+            unit_amount: option.diff,
           },
-          unit_amount: option.diff,
+          quantity: 1,
         },
-        quantity: 1,
+      ],
+      metadata: {
+        type: 'upgrade',
+        userId: user.id,
+        targetPlan: targetPlan,
+        planName: targetPlan
       },
-    ],
-    metadata: {
-      type: 'upgrade',
-      userId: user.id,
-      targetPlan: targetPlan,
-      planName: targetPlan // For compatibility with existing webhook logic if needed
-    },
-    payment_method_options: {
-        card: {
-            installments: {
-                enabled: true
-            }
-        }
-    },
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?upgrade=success`,
-    cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/upgrade?canceled=true`,
-  })
+      payment_method_options: {
+          card: {
+              installments: {
+                  enabled: true
+              }
+          }
+      },
+      success_url: `${appUrl}/dashboard?upgrade=success`,
+      cancel_url: `${appUrl}/upgrade?canceled=true`,
+    })
 
-  if (session.url) {
-    redirect(session.url)
+    if (session.url) {
+      redirect(session.url)
+    }
+  } catch (error) {
+    console.error('Create Upgrade Checkout Error:', error)
+    throw error // Re-throw to be caught by client component
   }
 }

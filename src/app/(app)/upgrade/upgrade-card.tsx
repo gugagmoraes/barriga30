@@ -32,10 +32,12 @@ export function UpgradeCard({ option, currentPlan, currentPrice }: UpgradeCardPr
     try {
       setLoading(true)
       await createUpgradeCheckout(option.key)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upgrade failed', error)
       setLoading(false)
-      alert('Erro ao iniciar o upgrade. Tente novamente.')
+      // Show more descriptive error if possible
+      const msg = error?.message || 'Erro ao iniciar o upgrade. Tente novamente.'
+      alert(`Não foi possível iniciar o upgrade: ${msg}`)
     }
   }
 
