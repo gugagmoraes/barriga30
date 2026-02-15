@@ -100,14 +100,23 @@ export function UpgradeCard({ option, currentPlan, currentPrice }: UpgradeCardPr
             <span>Seu Crédito ({PLAN_LABELS[currentPlan]}):</span>
             <span className="text-green-600 font-medium">-{formatCurrency(currentPrice)}</span>
           </div>
-          <div className="pt-3 border-t border-gray-200 flex justify-between items-center">
-            <span className="font-semibold text-gray-900">Valor do Upgrade:</span>
-            <span className="text-xl font-bold text-primary">{formatCurrency(option.diff)}</span>
-          </div>
-          
-          <div className="text-xs text-muted-foreground text-right space-y-0.5">
-            <div>1x de {formatCurrency(option.diff)} (no cartão)</div>
-            <div>Ou em até 12x de {formatCurrency(installment12)} (sem juros)</div>
+          <div className="pt-3 border-t border-gray-200 flex flex-col gap-3">
+            <div className="flex justify-between items-center">
+              <span className="font-semibold text-gray-900">Valor a Pagar AGORA para Upgrade:</span>
+              <span className="text-xl font-bold text-red-600">{formatCurrency(option.diff)}</span>
+            </div>
+
+            <div className="bg-white rounded-lg border border-red-100 p-3 text-center">
+              <div className="text-xs text-muted-foreground">Ou em</div>
+              <div className="text-red-600 font-extrabold text-3xl leading-none">
+                12x de {formatCurrency(installment12)}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">(sem juros)</div>
+            </div>
+
+            <div className="text-xs text-muted-foreground text-center">
+              Ou à vista por <span className="font-semibold text-gray-900">{formatCurrency(option.diff)}</span> (no cartão)
+            </div>
           </div>
         </div>
 
