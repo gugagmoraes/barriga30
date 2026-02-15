@@ -143,7 +143,7 @@ export function DietOnboardingForm({ userId, planType = 'basic' }: { userId: str
             {/* 3. Workout Duration (Buttons) */}
             <div className="space-y-3">
               <Label>Duração do Treino (Nível)</Label>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-2">
                 {[
                     { val: '15', label: 'Iniciante (15m)', desc: 'Ideal para quem está começando ou retornando à atividade.' },
                     { val: '20', label: 'Intermed. (20m)', desc: 'Para quem já tem alguma experiência e busca mais desafio.' },
@@ -160,7 +160,7 @@ export function DietOnboardingForm({ userId, planType = 'basic' }: { userId: str
                                 <div className="flex items-center gap-2">
                                     <span className="font-semibold">{opt.label}</span>
                                 </div>
-                                <span className="text-[10px] text-center font-normal leading-tight opacity-90 px-1">
+                                <span className="text-[10px] text-center font-normal leading-tight opacity-90 px-1 whitespace-normal">
                                     {opt.desc}
                                 </span>
                             </Button>
@@ -170,15 +170,17 @@ export function DietOnboardingForm({ userId, planType = 'basic' }: { userId: str
               </div>
               {planType === 'basic' && (
                   <p className="text-[10px] text-muted-foreground text-center mt-2 bg-yellow-50 p-2 rounded border border-yellow-100">
-                    <span className="font-bold text-yellow-700">Nota para Plano Basic:</span> Sua escolha de nível será fixa. Faça upgrade para Plus ou VIP para alterar o nível a qualquer momento.
+                    <span className="font-bold text-yellow-700">Nota para Plano Essencial:</span> Sua escolha de nível será fixa. Faça upgrade para Plano Evolução ou Plano Premium para alterar o nível a qualquer momento.
                   </p>
               )}
             </div>
 
             {/* 4. Food Preferences (Checklists) */}
             <div className="space-y-6">
-                <Label className="text-xl font-bold">Monte seu cardápio</Label>
-                <p className="text-sm text-muted-foreground -mt-4">Selecione APENAS o que você gosta de comer. Sua dieta será baseada nessas escolhas.</p>
+                <div>
+                    <Label className="text-xl font-bold">Monte seu cardápio</Label>
+                    <p className="text-sm text-muted-foreground mt-1">Selecione APENAS o que você gosta de comer. Sua dieta será baseada nessas escolhas.</p>
+                </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Proteins */}
