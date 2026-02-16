@@ -7,9 +7,9 @@ function requiredEnv(name: string) {
 }
 
 export const STRIPE_PRICE_IDS: Record<PlanKey, string> = {
-  basic: process.env.STRIPE_PRICE_ID_BASIC || 'price_1SjR0fGigUIifkMigDDhf5pv',
-  plus: process.env.STRIPE_PRICE_ID_PLUS || 'price_1SjR1vGigUIifkMib6IHcTak',
-  vip: process.env.STRIPE_PRICE_ID_VIP || 'price_1SyI7SGigUIifkMizfRzNT4V',
+  basic: process.env.STRIPE_PRICE_ID_BASIC || 'price_1T1J1AGS2UUpFp3bu2YagxFK',
+  plus: process.env.STRIPE_PRICE_ID_PLUS || 'price_1T1J3qGS2UUpFp3bLGmMGaEu',
+  vip: process.env.STRIPE_PRICE_ID_VIP || 'price_1T1J6qGS2UUpFp3bnU9BtZdX',
 }
 
 export function isPlanKey(value: unknown): value is PlanKey {
