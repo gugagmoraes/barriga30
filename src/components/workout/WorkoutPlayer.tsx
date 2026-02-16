@@ -207,9 +207,9 @@ export default function WorkoutPlayer({
             )}
 
             {/* Video Area */}
-            <div className="flex-1 bg-gray-900 flex items-center justify-center relative">
+            <div className="flex-1 bg-gray-900 flex items-center justify-center relative p-4">
                 {embedUrl ? (
-                    <div className="w-full h-full relative">
+                    <div className="w-full max-w-5xl aspect-video relative shadow-2xl bg-black rounded-lg overflow-hidden">
                         {isBunnyEmbed && (
                             <Script
                                 src="https://assets.mediadelivery.net/playerjs/playerjs-latest.min.js"

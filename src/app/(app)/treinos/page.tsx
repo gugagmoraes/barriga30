@@ -2,11 +2,14 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { PlayCircle, Clock, BarChart, Lock } from 'lucide-react'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 function normalizeBunnyEmbedUrl(url: unknown) {
   if (typeof url !== 'string') return null
   const trimmed = url.trim()
   if (!trimmed.startsWith('https://')) return trimmed
-
+  
   try {
     const parsed = new URL(trimmed)
     if (!parsed.hostname.endsWith('mediadelivery.net')) return trimmed
