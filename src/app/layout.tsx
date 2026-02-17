@@ -17,8 +17,14 @@ export const metadata: Metadata = {
   description: "Programa de emagrecimento de 30 dias com treinos rápidos, dieta e gamificação.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    icon: [
+      { url: '/favicon.ico', sizes: '16x16 32x32 48x48 64x64', type: 'image/x-icon' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+      { url: '/apple-touch-icon.svg', type: 'image/svg+xml' },
+    ],
   },
 };
 
