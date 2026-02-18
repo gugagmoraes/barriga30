@@ -1,9 +1,9 @@
 -- Seed Plans
 INSERT INTO plans (name, price, stripe_price_id, features, is_active)
 VALUES
-('Basic', 29.00, 'price_1T1J1AGS2UUpFp3bu2YagxFK', '["Acesso aos treinos", "Dieta padrão", "Lista de compras"]'::jsonb, true),
-('Plus', 49.00, 'price_1T1J3qGS2UUpFp3bLGmMGaEu', '["Tudo do Básico", "Gamificação completa", "Histórico de fotos", "Suporte prioritário"]'::jsonb, true),
-('VIP', 97.00, 'price_1T1J6qGS2UUpFp3bnU9BtZdX', '["Tudo do Plus", "Acesso antecipado", "Badges exclusivos", "Grupo VIP"]'::jsonb, true);
+('Basic', 29.00, 'price_1T20XdGigUIifkMi7JtOKPwH', '["Acesso aos treinos", "Dieta padrão", "Lista de compras"]'::jsonb, true),
+('Plus', 49.00, 'price_1T20ZTGigUIifkMiosr9BHO9', '["Tudo do Básico", "Gamificação completa", "Histórico de fotos", "Suporte prioritário"]'::jsonb, true),
+('VIP', 97.00, 'price_1T20bdGigUIifkMiz4SQnIO4', '["Tudo do Plus", "Acesso antecipado", "Badges exclusivos", "Grupo VIP"]'::jsonb, true);
 
 -- Seed Workouts (Beginner)
 INSERT INTO workouts (name, level, duration_minutes, video_url, exercises, is_active)
