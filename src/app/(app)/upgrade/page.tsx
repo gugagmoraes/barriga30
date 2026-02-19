@@ -1,4 +1,4 @@
-import { getUpgradeDetails } from '@/app/actions/upgrade'
+import { createClient } from '@/lib/supabase/server'
 import { UpgradeCard } from './upgrade-card'
 import { redirect } from 'next/navigation'
 import { CheckCircle2 } from 'lucide-react'
@@ -6,13 +6,60 @@ import { CheckCircle2 } from 'lucide-react'
 export const dynamic = 'force-dynamic'
 
 export default async function UpgradePage() {
-  const details = await getUpgradeDetails()
-
-  if (!details) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) {
     redirect('/login')
   }
 
-  const { currentPlan, currentPrice, options } = details
+  const { data: profile } = await supabase
+    .from('users')
+    .select('plan_type')
+    .eq('id', user.id)
+    .single()
+
+  const currentPlan = profile?.plan_type || 'basic'
+
+  // Opções hardcoded com links do Cakto
+  const allOptions = [
+    {
+      key: 'plus',
+      name: 'Plano Evolução',
+      price: 19700, // Valor cheio anual (visual apenas)
+      benefits: [
+        'Programas de Treino Progressivos (Iniciante ao Avançado)',
+        'Dietas Dinâmicas e Adaptativas (Evita estagnação)',
+        'Gamificação Completa (Conquistas, Badges)',
+        'Histórico Completo de Progresso',
+        'Suporte Inteligente Acelerado',
+        'Acesso de 1 ano à plataforma',
+      ],
+      link: 'https://pay.cakto.com.br/fyw6tut_775098'
+    },
+    {
+      key: 'vip',
+      name: 'Plano Premium',
+      price: 29700, // Valor cheio anual (visual apenas)
+      benefits: [
+        'Treinos Especiais para Dias Críticos (TPM, etc)',
+        'Biblioteca Exclusiva (Glúteos, Abdômen...)',
+        'Desconto de R$100 na Renovação',
+        'Acesso Antecipado a Novidades',
+        'Suporte Inteligente VIP',
+        'Acesso de 1 ano à plataforma',
+      ],
+      link: 'https://pay.cakto.com.br/bkiq2wi_775098'
+    }
+  ]
+
+  let options: any[] = []
+
+  if (currentPlan === 'basic') {
+    options = allOptions
+  } else if (currentPlan === 'plus') {
+    options = allOptions.filter(o => o.key === 'vip')
+  }
 
   if (options.length === 0) {
     return (
@@ -42,8 +89,7 @@ export default async function UpgradePage() {
           <UpgradeCard 
             key={option.key} 
             option={option} 
-            currentPlan={currentPlan} 
-            currentPrice={currentPrice} 
+            currentPlan={currentPlan}
           />
         ))}
       </div>

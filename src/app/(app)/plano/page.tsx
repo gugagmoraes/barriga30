@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import { getUpgradeDetails } from '@/app/actions/upgrade'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -26,11 +25,12 @@ export default async function MyPlanPage() {
     .eq('id', user.id)
     .single()
 
-  const upgradeDetails = await getUpgradeDetails()
-  const canUpgrade = upgradeDetails && upgradeDetails.options.length > 0
   const planType = profile?.plan_type || 'basic'
   const planName = PLAN_LABELS[planType] || 'Plano Desconhecido'
   const isActive = profile?.stripe_subscription_status === 'active' || profile?.stripe_subscription_status === 'trialing'
+
+  // Simples lógica: se não for VIP, pode fazer upgrade
+  const canUpgrade = planType !== 'vip'
 
   const renewalDate = profile?.stripe_current_period_end 
     ? new Date(profile.stripe_current_period_end).toLocaleDateString('pt-BR') 

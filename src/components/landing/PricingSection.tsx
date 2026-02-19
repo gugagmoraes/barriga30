@@ -151,14 +151,16 @@ export const PricingSection = () => {
             </div>
             
             <div className="p-6 bg-gray-50 border-t border-gray-100 mt-auto">
-              <Link
-                href="/checkout/basic"
+              <a
+                href="https://pay.cakto.com.br/cv47469_775098"
+                target="_blank"
+                rel="noopener noreferrer"
                 className={cn(
                   'inline-flex items-center justify-center whitespace-nowrap rounded-xl text-lg font-bold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 w-full py-6 border-2 border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-gray-900 hover:border-gray-400'
                 )}
               >
                 Escolher Plano Essencial
-              </Link>
+              </a>
             </div>
           </div>
 
@@ -217,12 +219,14 @@ export const PricingSection = () => {
             </div>
             
             <div className="p-6 bg-orange-50/50 mt-auto border-t border-orange-100">
-              <Link
-                href="/checkout/plus"
+              <a
+                href="https://pay.cakto.com.br/fyw6tut_775098"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center justify-center whitespace-nowrap rounded-xl text-xl font-black transition-all w-full py-8 bg-[#FF4D4D] hover:bg-[#e63e3e] text-white shadow-xl shadow-orange-200 hover:shadow-orange-300 transform hover:scale-[1.02] border-b-4 border-[#cc0000]"
               >
                 Escolher Plano Evolução
-              </Link>
+              </a>
             </div>
           </div>
 
@@ -270,14 +274,16 @@ export const PricingSection = () => {
             </div>
             
             <div className="p-6 bg-gray-50 border-t border-gray-100 mt-auto">
-              <Link
-                href="/checkout/vip"
+              <a
+                href="https://pay.cakto.com.br/bkiq2wi_775098"
+                target="_blank"
+                rel="noopener noreferrer"
                 className={cn(
                   'inline-flex items-center justify-center whitespace-nowrap rounded-xl text-lg font-bold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 w-full py-6 border-2 border-purple-200 text-purple-700 hover:bg-purple-50 hover:text-purple-900 hover:border-purple-300'
                 )}
               >
                 Escolher Plano Premium
-              </Link>
+              </a>
             </div>
           </div>
 

@@ -7,11 +7,9 @@ import { loginSchema, signupSchema } from '@/lib/schemas/auth'
 import { logActivity } from '@/services/gamification'
 import { saveQuizSubmission } from '../actions/quiz'
 import { PlanType } from '@/types/database.types'
-import { attachCheckoutSessionToUser } from '@/lib/stripe/attach'
 
 export async function login(prevState: any, formData: FormData) {
   console.log('[Login Action] Started')
-  console.log('Supabase URL defined:', !!process.env.NEXT_PUBLIC_SUPABASE_URL)
   
   const data = Object.fromEntries(formData.entries())
   
@@ -23,7 +21,6 @@ export async function login(prevState: any, formData: FormData) {
   }
 
   const { email, password } = validation.data
-  const checkoutSessionId = formData.get('checkout_session_id') as string | null
 
   const supabase = await createClient()
 
@@ -36,15 +33,6 @@ export async function login(prevState: any, formData: FormData) {
     if (error) {
       console.error('Supabase Auth Error:', error)
       return { error: error.message }
-    }
-
-    if (checkoutSessionId && authData.user) {
-      const result = await attachCheckoutSessionToUser({
-        checkoutSessionId,
-        userId: authData.user.id,
-        userEmail: authData.user.email ?? email,
-      })
-      console.log('[Login Action] Checkout attached:', result.plan)
     }
 
     // GAMIFICATION: Log Daily Login
@@ -70,7 +58,6 @@ export async function login(prevState: any, formData: FormData) {
 export async function signup(prevState: any, formData: FormData) {
   const data = Object.fromEntries(formData.entries())
   const quizDataRaw = formData.get('quiz_data') as string
-  const checkoutSessionId = formData.get('checkout_session_id') as string | null
 
   // 1. Validar dados com Zod
   const validation = signupSchema.safeParse(data)
@@ -147,21 +134,6 @@ export async function signup(prevState: any, formData: FormData) {
         referenceId: today,
         xp: 10
     })
-  }
-
-  if (checkoutSessionId && authData.user) {
-    try {
-      const result = await attachCheckoutSessionToUser({
-        checkoutSessionId,
-        userId: authData.user.id,
-        userEmail: authData.user.email ?? email,
-      })
-      console.log('[Signup] Checkout attached:', result.plan)
-    } catch (e: any) {
-      console.error('[Signup] Failed to attach checkout session (non-blocking):', e)
-      // We don't return error here to avoid blocking the user from accessing the dashboard.
-      // The webhook should handle the plan update if this fails.
-    }
   }
 
   revalidatePath('/', 'layout')
