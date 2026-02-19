@@ -125,7 +125,7 @@ export const PricingSection = () => {
                   <span className="text-gray-500 font-medium">/ano</span>
                 </div>
                 <p className="text-sm font-bold text-green-600 mt-2 bg-green-50 inline-block px-2 py-1 rounded w-fit">
-                  ou 12x de R$ 8,33 <span className="font-normal text-gray-500 text-xs">(sem juros)</span>
+                  ou 12x de R$ 11,51 <span className="font-normal text-gray-500 text-xs">(sem juros)</span>
                 </p>
               </div>
 
@@ -182,7 +182,7 @@ export const PricingSection = () => {
                   <span className="text-gray-500 font-medium">/ano</span>
                 </div>
                  <p className="text-base font-bold text-green-700 mt-2 bg-green-50 inline-block px-3 py-1 rounded w-fit border border-green-100">
-                  ou 12x de R$ 16,42 <span className="font-normal text-gray-600 text-xs">(sem juros)</span>
+                  ou 12x de R$ 22,91 <span className="font-normal text-gray-600 text-xs">(sem juros)</span>
                 </p>
               </div>
 
@@ -242,7 +242,7 @@ export const PricingSection = () => {
                   <span className="text-gray-500 font-medium">/ano</span>
                 </div>
                 <p className="text-sm font-bold text-purple-600 mt-2 bg-purple-50 inline-block px-2 py-1 rounded w-fit">
-                  ou 12x de R$ 24,75 <span className="font-normal text-gray-500 text-xs">(sem juros)</span>
+                  ou 12x de R$ 34,53 <span className="font-normal text-gray-500 text-xs">(sem juros)</span>
                 </p>
               </div>
 

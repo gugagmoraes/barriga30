@@ -13,6 +13,7 @@ interface UpgradeOption {
   price: number
   benefits: string[]
   link: string
+  installmentText?: string
 }
 
 interface UpgradeCardProps {
@@ -85,6 +86,13 @@ export function UpgradeCard({ option, currentPlan }: UpgradeCardProps) {
              <div className="text-red-500 font-bold text-2xl">
                 {formatCurrency(option.price)}
              </div>
+             {option.installmentText && (
+               <div className="flex justify-center mt-2">
+                 <p className="text-sm font-bold text-green-600 bg-green-50 px-2 py-1 rounded w-fit">
+                   {option.installmentText}
+                 </p>
+               </div>
+             )}
           </div>
         </div>
 

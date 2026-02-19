@@ -27,6 +27,7 @@ export default async function UpgradePage() {
       key: 'plus',
       name: 'Plano Evolução',
       price: 19700, // Valor cheio anual (visual apenas)
+      installmentText: 'ou 12x de R$ 22,91 (sem juros)',
       benefits: [
         'Programas de Treino Progressivos (Iniciante ao Avançado)',
         'Dietas Dinâmicas e Adaptativas (Evita estagnação)',
@@ -41,6 +42,7 @@ export default async function UpgradePage() {
       key: 'vip',
       name: 'Plano Premium',
       price: 29700, // Valor cheio anual (visual apenas)
+      installmentText: 'ou 12x de R$ 34,53 (sem juros)',
       benefits: [
         'Treinos Especiais para Dias Críticos (TPM, etc)',
         'Biblioteca Exclusiva (Glúteos, Abdômen...)',
